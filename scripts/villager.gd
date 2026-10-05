@@ -1,11 +1,10 @@
 class_name Villager
 extends StaticBody3D
-## Aldeano con el que se puede hablar. Al entrar Henry en su radio se registra
-## como "interactuable" en el GameManager; al interactuar abre un diálogo.
+## Aldeano con el que se puede hablar: Henry lo detecta mirándolo de cerca
+## (rayo desde la cámara en primera persona) y al interactuar abre un diálogo.
 
 @export var display_name := "Aldeano"
 @export var lines: PackedStringArray = []
-@export var talk_radius := 1.9
 ## Aspecto. Con "model" (ruta FBX) y "outfit" usa PS1RiggedCharacter;
 ## si no, PS1Character con colores (tunic_color, hair_color, has_hood...).
 @export var appearance: Dictionary = {}
@@ -29,17 +28,6 @@ func _ready() -> void:
 		model.set("model_path" if key == "model" else key, appearance[key])
 	add_child(model)
 
-	var area := Area3D.new()
-	area.monitorable = false
-	var sphere := SphereShape3D.new()
-	sphere.radius = talk_radius
-	var acs := CollisionShape3D.new()
-	acs.shape = sphere
-	acs.position.y = 0.9
-	area.add_child(acs)
-	add_child(area)
-	area.body_entered.connect(_on_body_entered)
-	area.body_exited.connect(_on_body_exited)
 	GameManager.dialog_finished.connect(_on_dialog_finished)
 
 
@@ -61,13 +49,3 @@ func _on_dialog_finished() -> void:
 	if _talking:
 		_talking = false
 		model.call("play", "idle")
-
-
-func _on_body_entered(body: Node3D) -> void:
-	if body.is_in_group("player"):
-		GameManager.set_interactable(self)
-
-
-func _on_body_exited(body: Node3D) -> void:
-	if body.is_in_group("player"):
-		GameManager.clear_interactable(self)

@@ -40,4 +40,5 @@ func _on_state_changed(new_state: GameManager.GameState, _old: GameManager.GameS
 
 func _back_to_menu() -> void:
 	GameManager.reset()
+	GameManager.retrying = false
 	get_tree().reload_current_scene()

@@ -4,7 +4,8 @@ extends Node3D
 ##  - textura repintada de estilo medieval (ver CharacterRepaint),
 ##  - material PS1 (jitter de vértices + texturas afines + Nearest),
 ##  - animaciones generadas por código sobre los huesos Mixamo con
-##    interpolación NEAREST (idle, walk, run, talk).
+##    interpolación NEAREST (idle, walk, run, talk, attack, hit),
+##  - arma opcional en la mano derecha.
 ## Expone la misma API que PS1Character: play(nombre, velocidad).
 
 ## Modelo con rig Mixamo (mixamorig_*).
@@ -12,6 +13,8 @@ extends Node3D
 ## Clave de CharacterRepaint.OUTFITS.
 @export var outfit := "henry"
 @export var body_scale := 1.0
+## "" (nada), "sword", "axe" o "hammer" (ver WeaponFactory).
+@export var weapon := ""
 
 var animation_player: AnimationPlayer
 var skeleton: Skeleton3D
@@ -21,6 +24,9 @@ var _lower_l := Quaternion.IDENTITY
 var _lower_r := Quaternion.IDENTITY
 var _elbow_axis_l := Vector3.UP
 var _elbow_axis_r := Vector3.UP
+
+## Colocación del arma respecto al hueso de la mano (rig Mixamo).
+var weapon_grip := Transform3D(Basis.from_euler(Vector3(PI / 2, 0, 0)), Vector3(0, 0.08, 0.02))
 
 const BONES := [
 	"mixamorig_Spine1", "mixamorig_Head",
@@ -40,6 +46,7 @@ func _ready() -> void:
 	for ap in _rig.find_children("*", "AnimationPlayer", true, false):
 		ap.free() # La pose de importación no nos sirve.
 	_apply_texture()
+	_attach_weapon()
 	_build_animations()
 	play("idle")
 	animation_player.seek(randf() * animation_player.current_animation_length, true)
@@ -49,6 +56,45 @@ func play(anim_name: String, speed := 1.0) -> void:
 	animation_player.speed_scale = speed
 	if animation_player.current_animation != anim_name:
 		animation_player.play(anim_name)
+
+
+## Reproduce desde el principio (ataques, golpes recibidos).
+func play_once(anim_name: String) -> void:
+	animation_player.speed_scale = 1.0
+	animation_player.stop()
+	animation_player.play(anim_name)
+
+
+## Tinte breve (rojo al recibir daño, amarillo al preparar un ataque...).
+func flash(color: Color, duration := 0.12) -> void:
+	for mi: MeshInstance3D in _rig.find_children("*", "MeshInstance3D", true, false):
+		var mat := mi.material_override as ShaderMaterial
+		if mat:
+			mat.set_shader_parameter("albedo", color)
+	get_tree().create_timer(duration, false).timeout.connect(func() -> void:
+		if not is_instance_valid(_rig):
+			return
+		for mi: MeshInstance3D in _rig.find_children("*", "MeshInstance3D", true, false):
+			var mat := mi.material_override as ShaderMaterial
+			if mat:
+				mat.set_shader_parameter("albedo", Color.WHITE))
+
+
+## Capa de render (1-20) de todas las mallas, sombra incluida.
+func set_visual_layer(layer: int) -> void:
+	for gi: GeometryInstance3D in find_children("*", "GeometryInstance3D", true, false):
+		gi.layers = 1 << (layer - 1)
+
+
+func _attach_weapon() -> void:
+	if weapon == "":
+		return
+	var attach := BoneAttachment3D.new()
+	attach.bone_name = "mixamorig_RightHand"
+	skeleton.add_child(attach)
+	var w := WeaponFactory.build(weapon)
+	w.transform = weapon_grip
+	attach.add_child(w)
 
 
 # --- Textura -----------------------------------------------------------------
@@ -114,6 +160,17 @@ func _build_animations() -> void:
 		{"arm_r": 0.5, "elbow_r": 1.0, "head": -0.04},
 		{"arm_r": 0.3, "elbow_r": 0.8, "head": 0.06},
 	]))
+	# attack: amago (0-0,45 s), golpe en 0,45 s, recuperación. Sin bucle.
+	lib.add_animation("attack", _make_anim(0.9, [
+		{"arm_r": 2.2, "elbow_r": 1.3, "spine": -0.08, "leg_l": 0.2},
+		{"arm_r": 2.6, "elbow_r": 1.1, "spine": -0.15, "leg_l": 0.25},
+		{"arm_r": 0.9, "elbow_r": 0.15, "spine": 0.3, "leg_l": 0.35, "knee_r": 0.3},
+		{"arm_r": 0.5, "elbow_r": 0.3, "spine": 0.15, "leg_l": 0.2},
+	], false))
+	lib.add_animation("hit", _make_anim(0.4, [
+		{"spine": -0.3, "head": -0.25, "arm_l": 0.4, "arm_r": 0.4, "knee_l": 0.2},
+		{"spine": -0.12, "head": -0.1},
+	], false))
 	animation_player.add_animation_library("", lib)
 
 
@@ -171,10 +228,10 @@ func _local_rotation(bone: int, model_rot: Quaternion) -> Quaternion:
 	return (l * (g.inverse() * model_rot * g)).normalized()
 
 
-func _make_anim(length: float, frames: Array) -> Animation:
+func _make_anim(length: float, frames: Array, loop := true) -> Animation:
 	var anim := Animation.new()
 	anim.length = length
-	anim.loop_mode = Animation.LOOP_LINEAR
+	anim.loop_mode = Animation.LOOP_LINEAR if loop else Animation.LOOP_NONE
 	var step := length / frames.size()
 	var rig_path := "Rig/%s" % _rig.get_path_to(skeleton)
 

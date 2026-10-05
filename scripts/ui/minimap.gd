@@ -9,7 +9,8 @@ var _player: Node3D
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(64, 64)
+	if custom_minimum_size == Vector2.ZERO:
+		custom_minimum_size = Vector2(64, 64)
 	size = custom_minimum_size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 

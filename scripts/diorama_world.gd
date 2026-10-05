@@ -6,12 +6,14 @@ extends Node3D
 ##
 ## Coordenadas: +X este, -Z norte. La superficie jugable va de -18 a 18.
 ## Registra "map_features" (huellas de edificios) para el minimapa.
+## set_first_person() cambia la atmósfera al bajar a jugar dentro de la maqueta.
 
 const HALF := 18.0
 const PLINTH_HEIGHT := 3.0
 
 var map_features: Array[Dictionary] = []
 
+var _env: Environment
 var _fire_light: OmniLight3D
 var _fire_timer := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -31,7 +33,8 @@ func _ready() -> void:
 	_build_trees()
 	_build_bounds()
 	_build_villagers()
-	_build_camera_zones()
+	_build_location_zones()
+	_build_training_ground()
 
 
 func _process(delta: float) -> void:
@@ -44,8 +47,19 @@ func _process(delta: float) -> void:
 
 # --- Entorno -------------------------------------------------------------------
 
+## Dentro de la maqueta: cielo de atardecer y niebla densa (la distancia de
+## dibujado corta típica de PS1). Desde fuera: la habitación oscura.
+func set_first_person(enabled: bool) -> void:
+	var sky := Color(0.46, 0.5, 0.58) if enabled else Color(0.09, 0.07, 0.10)
+	var tween := create_tween().set_parallel()
+	tween.tween_property(_env, "background_color", sky, 1.0)
+	tween.tween_property(_env, "fog_light_color", sky, 1.0)
+	tween.tween_property(_env, "fog_density", 0.045 if enabled else 0.012, 1.0)
+
+
 func _build_environment() -> void:
 	var env := Environment.new()
+	_env = env
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.09, 0.07, 0.10)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -418,10 +432,12 @@ func _build_bounds() -> void:
 func _build_villagers() -> void:
 	_villager("Martin", Vector3(8.6, 0, 3.4), PI / 2, {
 		"model": "res://assets/characters/Character_02.fbx", "outfit": "herrero", "body_scale": 1.04,
+		"weapon": "hammer",
 	}, [
 		"¡Henry! Por fin apareces. ¿Dónde te habías metido?",
-		"Tengo un encargo importante para la fragua y necesito tus manos.",
-		"Date una vuelta por el pueblo si quieres, pero no tardes. El hierro no espera.",
+		"Esa espada que llevas la forjé yo. A ver si sabes usarla.",
+		"Ve al muñeco de paja de ahí al lado y dale unos buenos tajos.",
+		"Clic izquierdo para golpear, clic derecho para cubrirte. Si te cubres justo a tiempo, desarmas al rival.",
 	])
 	_villager("Theresa", Vector3(-2.4, 0, 2.6), PI * 0.85, {
 		"tunic_color": Color(0.30, 0.38, 0.55), "sleeve_color": Color(0.85, 0.80, 0.68),
@@ -441,10 +457,11 @@ func _build_villagers() -> void:
 	])
 	_villager("Guardia", Vector3(2.7, 0, 15.3), 0.0, {
 		"model": "res://assets/characters/Character_04.fbx", "outfit": "guardia", "body_scale": 1.03,
+		"weapon": "sword",
 	}, [
 		"Alto ahí, muchacho. ¿Pensabas salir del pueblo?",
-		"Hay rumores de jinetes extranjeros por los caminos.",
-		"Vuelve a la plaza. Aquí dentro estás más seguro.",
+		"Hay rumores de bandidos merodeando por los caminos.",
+		"Espera... ¿oyes eso? ¡Cascos de caballo! ¡Están aquí! ¡Coge tu espada!",
 	])
 	_villager("Kuneš", Vector3(-9.7, 0, 4.4), -PI / 2, {
 		"model": "res://assets/characters/Character_05.fbx", "outfit": "campesino",
@@ -467,29 +484,32 @@ func _villager(display_name: String, pos: Vector3, rot_y: float, look: Dictionar
 	add_child(v)
 
 
-## Planos fijos por zona. Pequeños solapes entre zonas evitan parpadeos de cámara.
-func _build_camera_zones() -> void:
-	_camera_zone("LA IGLESIA", Vector3(0, 0, -11.75), Vector3(36.4, 4, 12.9),
-		Vector3(0, 9.5, -1.0), Vector3(0, 2.5, -12))
-	_camera_zone("LA PLAZA", Vector3(0, 0, 0.2), Vector3(16, 4, 11.6),
-		Vector3(-9, 8, 10), Vector3(0, 0.5, 0))
-	_camera_zone("BARRIO OESTE", Vector3(-12.95, 0, 6.3), Vector3(10.5, 4, 23.8),
-		Vector3(-4, 9, 19), Vector3(-12, 0.5, 3))
-	_camera_zone("LA FORJA", Vector3(12.95, 0, 6.3), Vector3(10.5, 4, 23.8),
-		Vector3(3.5, 8.5, 15), Vector3(11, 0.5, 2))
-	_camera_zone("PUERTA SUR", Vector3(0, 0, 11.95), Vector3(16, 4, 12.5),
-		Vector3(0, 12, 21.5), Vector3(0, 0.5, 9.5))
+## Zonas con nombre (el HUD lo muestra al entrar).
+func _build_location_zones() -> void:
+	_location("LA IGLESIA", Vector3(0, 0, -11.75), Vector3(36.4, 4, 12.9))
+	_location("LA PLAZA", Vector3(0, 0, 0.2), Vector3(16, 4, 11.6))
+	_location("BARRIO OESTE", Vector3(-12.95, 0, 6.3), Vector3(10.5, 4, 23.8))
+	_location("LA FORJA", Vector3(12.95, 0, 6.3), Vector3(10.5, 4, 23.8))
+	_location("PUERTA SUR", Vector3(0, 0, 11.95), Vector3(16, 4, 12.5))
 
 
-func _camera_zone(zone_name: String, center: Vector3, size: Vector3, cam: Vector3, look: Vector3) -> void:
-	var zone := CameraZone.new()
+func _location(zone_name: String, center: Vector3, size: Vector3) -> void:
+	var zone := LocationZone.new()
 	zone.name = "Zone_" + zone_name.replace(" ", "_")
 	zone.zone_name = zone_name
 	zone.size = size
-	zone.camera_position = cam
-	zone.look_target = look
 	zone.position = center
 	add_child(zone)
+
+
+## Muñeco de paja junto a la forja.
+func _build_training_ground() -> void:
+	var dummy := TrainingDummy.new()
+	dummy.name = "TrainingDummy"
+	dummy.position = Vector3(6.4, 0, 6.6)
+	add_child(dummy)
+	map_features.append({"pos": Vector2(6.4, 6.6), "size": Vector2(0.8, 0.8), "rot": 0.0,
+		"color": Color(0.85, 0.75, 0.35), "round": true})
 
 
 # --- Utilidades ----------------------------------------------------------------

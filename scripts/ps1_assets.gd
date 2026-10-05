@@ -5,6 +5,7 @@ extends RefCounted
 ## una tuya pintada a mano manteniendo el mismo material.
 
 const SHADER := preload("res://shaders/ps1_spatial.gdshader")
+const VIEWMODEL_SHADER := preload("res://shaders/ps1_viewmodel.gdshader")
 const TEX_SIZE := 32
 
 static var _textures := {}
@@ -42,6 +43,14 @@ static func textured(tex: Texture2D, tint := Color.WHITE) -> ShaderMaterial:
 	mat.set_shader_parameter("albedo", tint)
 	mat.set_shader_parameter("albedo_texture", tex)
 	mat.set_shader_parameter("world_uv", false)
+	return mat
+
+
+## Material del arma en primera persona (sin test de profundidad).
+static func viewmodel(color: Color) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = VIEWMODEL_SHADER
+	mat.set_shader_parameter("albedo", color)
 	return mat
 
 

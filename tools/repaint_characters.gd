@@ -7,20 +7,23 @@ extends SceneTree
 ## se conservan las caras y los pliegues de la ropa; si no, se pinta todo proceduralmente.
 ## Resultado: assets/characters/textures/Character_0X_<atuendo>.png
 
-const CAST := {
-	"Character_01": "henry",
-	"Character_02": "herrero",
-	"Character_03": "cura",
-	"Character_04": "guardia",
-	"Character_05": "campesino",
-}
+## [modelo, atuendo]. Un mismo modelo puede tener varios atuendos.
+const CAST := [
+	["Character_01", "henry"],
+	["Character_02", "herrero"],
+	["Character_03", "cura"],
+	["Character_04", "guardia"],
+	["Character_05", "campesino"],
+	["Character_05", "bandido"],
+	["Character_03", "bandido"],
+	["Character_04", "jefe"],
+]
 
 
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://assets/characters/textures"))
-	for model: String in CAST:
-		for outfit: String in ([CAST[model]] if OS.get_cmdline_user_args().is_empty() else OS.get_cmdline_user_args()):
-			_repaint(model, outfit)
+	for entry: Array in CAST:
+		_repaint(entry[0], entry[1])
 	quit()
 
 

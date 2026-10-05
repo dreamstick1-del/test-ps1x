@@ -47,6 +47,21 @@ const OUTFITS := {
 		"mail": true, "tabard": Color(0.70, 0.12, 0.10), "hood": Color(0.55, 0.55, 0.60),
 		"beard": Color(0.25, 0.20, 0.15),
 	},
+	"bandido": {
+		"skin": Color(0.76, 0.55, 0.42), "hair": Color(0.15, 0.11, 0.08),
+		"tunic": Color(0.30, 0.22, 0.15), "trim": Color(0.18, 0.13, 0.09),
+		"sleeve": Color(0.24, 0.20, 0.16), "hose": Color(0.14, 0.13, 0.12),
+		"boots": Color(0.13, 0.09, 0.06), "belt": Color(0.10, 0.07, 0.05),
+		"hood": Color(0.45, 0.10, 0.08), "beard": Color(0.16, 0.12, 0.08),
+	},
+	"jefe": {
+		"skin": Color(0.74, 0.54, 0.42), "hair": Color(0.10, 0.08, 0.07),
+		"tunic": Color(0.50, 0.50, 0.54), "trim": Color(0.75, 0.60, 0.20),
+		"sleeve": Color(0.50, 0.50, 0.54), "hose": Color(0.12, 0.12, 0.12),
+		"boots": Color(0.10, 0.07, 0.05), "belt": Color(0.35, 0.25, 0.10),
+		"mail": true, "tabard": Color(0.12, 0.12, 0.13), "cross": false,
+		"hood": Color(0.40, 0.08, 0.06), "beard": Color(0.10, 0.08, 0.07),
+	},
 	"campesino": {
 		"skin": Color(0.78, 0.56, 0.42), "hair": Color(0.45, 0.30, 0.15),
 		"tunic": Color(0.38, 0.45, 0.25), "trim": Color(0.30, 0.35, 0.18),
@@ -299,7 +314,8 @@ class _Context:
 		if p.y > neck_y - 0.02 and not o.get("mail", false):
 			return o.skin
 		if o.has("tabard") and absf(n.x) < 0.6 and dx < 0.14 and p.y < neck_y - 0.06:
-			if front and (dx < 0.018 or absf(p.y - (chest_y + 0.02)) < 0.018) and p.y > hips_y + 0.12:
+			if front and o.get("cross", true) and (dx < 0.018 or absf(p.y - (chest_y + 0.02)) < 0.018) \
+					and p.y > hips_y + 0.12:
 				return o.trim # cruz
 			return o.tabard
 		if o.has("apron") and front and p.y < chest_y + 0.05 and dx < 0.15:
