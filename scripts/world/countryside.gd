@@ -543,7 +543,19 @@ func _build_forests() -> void:
 		var p := Vector2(rng.randf_range(-HALF, HALF), rng.randf_range(-HALF, HALF))
 		if _tree_spot_free(p.x, p.y) and _far_from(spots, p, 3.0):
 			spots.append(p)
-	_plant(spots)
+	# El bosque de los lobos es de pinos; el resto, sobre todo de hoja ancha.
+	var pines: Array[Vector2] = []
+	var leafy: Array[Vector3] = []
+	for p: Vector2 in spots:
+		var wolf_forest := p.distance_to(Vector2(-36, -38)) < 13.0
+		if wolf_forest or rng.randf() < 0.25:
+			pines.append(p)
+		else:
+			leafy.append(ground(p.x, p.y))
+			w.map_features.append({"pos": p, "size": Vector2(2.6, 2.6), "rot": 0.0,
+				"color": Color(0.2, 0.36, 0.14), "round": true})
+	_plant(pines)
+	Broadleaf.plant(w, leafy)
 	w.add_location("BOSQUE", Vector3(34, -2, -36), Vector3(28, 20, 24))
 	w.add_location("BOSQUE DE LOS LOBOS", Vector3(-36, -2, -40), Vector3(22, 20, 16))
 

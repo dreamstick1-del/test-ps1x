@@ -26,6 +26,10 @@ const PRESETS := {
 	# transparentes y se recorta una silueta redonda de mata.
 	"shrub": {"src": "shrub_photo.jpg", "crop": Rect2(0.15, 0.5, 0.7, 0.48), "size": 256, "leaves": 0.17},
 	"purple": {"src": "purple_photo.jpg", "crop": Rect2(0.1, 0.25, 0.8, 0.6), "size": 256, "leaves": 0.11},
+	# Hojas sueltas fotografiadas sobre un dedo: se recortan (PNG con alfa) y se
+	# estampan muchas veces para formar un racimo de copa de árbol.
+	"leafcluster": {"src": "leaf_front_photo.jpg", "srcs": ["leaf_front_photo.jpg", "leaf_back_photo.jpg"],
+		"crop": Rect2(0, 0, 1, 1), "size": 256, "cluster": 130},
 }
 
 
@@ -46,6 +50,9 @@ func _make(name: String, p: Dictionary) -> void:
 	var img := photo.get_region(r)
 	img.resize(size, size, Image.INTERPOLATE_LANCZOS)
 	_equalize(img, size, p.get("equalize", 1.0))
+	if p.has("cluster"):
+		_make_cluster(name, p)
+		return
 	if p.has("leaves"):
 		_make_leaves(name, img, size, p.leaves)
 		return
@@ -115,6 +122,100 @@ func _make_blades(name: String, photo: Image, size: int, count: int) -> void:
 				out.set_pixel(px, py, Color(c.r, c.g, c.b, 1.0))
 	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
 	print("Textura '%s' (hojas recortadas) generada desde %s" % [name, PRESETS[name].src])
+
+
+## Recorta la hoja de una foto: verde = hoja; piel (rojiza) y fondo gris fuera.
+## Devuelve la hoja recortada a su caja, con alfa, a `target` px de alto.
+func _cut_leaf(src: String, target: int) -> Image:
+	var photo := Image.load_from_file(ProjectSettings.globalize_path("res://assets/textures/source/" + src))
+	photo.convert(Image.FORMAT_RGBA8)
+	photo.resize(photo.get_width() / 4, photo.get_height() / 4, Image.INTERPOLATE_BILINEAR)
+	var w := photo.get_width()
+	var h := photo.get_height()
+	var cols := PackedInt32Array()
+	var rows := PackedInt32Array()
+	cols.resize(w)
+	rows.resize(h)
+	for y in h:
+		for x in w:
+			var c := photo.get_pixel(x, y)
+			# Hoja: verde (o verde amarillento) claramente por encima del azul y sin
+			# el rojo de la piel. El fondo gris tiene verde y azul parecidos.
+			var leaf := c.g - c.b > 0.15 and c.g > c.r - 0.03
+			photo.set_pixel(x, y, Color(c.r, c.g, c.b, 1.0 if leaf else 0.0))
+			if leaf:
+				cols[x] += 1
+				rows[y] += 1
+	# Caja = filas/columnas con bastante hoja (ignora motas verdes sueltas).
+	var minx := _first_over(cols, 0.12, false)
+	var maxx := _first_over(cols, 0.12, true)
+	var miny := _first_over(rows, 0.12, false)
+	var maxy := _first_over(rows, 0.12, true)
+	var leaf_img := photo.get_region(Rect2i(minx, miny, maxx - minx + 1, maxy - miny + 1))
+	var scale := float(target) / leaf_img.get_height()
+	leaf_img.resize(maxi(1, int(leaf_img.get_width() * scale)), target, Image.INTERPOLATE_BILINEAR)
+	leaf_img.save_png(ProjectSettings.globalize_path("res://assets/textures/leaf_%s.png" % src.get_basename().replace("_photo", "")))
+	return leaf_img
+
+
+func _first_over(counts: PackedInt32Array, fraction: float, from_end: bool) -> int:
+	var peak := 0
+	for c in counts:
+		peak = maxi(peak, c)
+	var n := counts.size()
+	for i in n:
+		var idx := n - 1 - i if from_end else i
+		if counts[idx] > peak * fraction:
+			return idx
+	return 0
+
+
+## Racimo de hojas para copas: estampa N hojas (anverso y reverso) giradas y
+## de tamaños distintos dentro de una silueta redonda. Las del fondo, más
+## oscuras (sombra interior de la copa); las de delante, más claras.
+func _make_cluster(name: String, p: Dictionary) -> void:
+	var size: int = p.size
+	var leaves: Array[Image] = []
+	for src: String in p.srcs:
+		leaves.append(_cut_leaf(src, 44))
+	var out := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var count: int = p.cluster
+	for i in count:
+		var depth := float(i) / count # 0 = fondo, 1 = delante
+		var a := rng.randf() * TAU
+		var rad := pow(rng.randf(), 0.7) * size * 0.36
+		var center := Vector2(size, size) * 0.5 + Vector2(cos(a), sin(a) * 0.9) * rad
+		var leaf: Image = leaves[0] if rng.randf() < 0.7 else leaves[1]
+		var scale := rng.randf_range(0.7, 1.15)
+		var rot := rng.randf() * TAU
+		var light := lerpf(0.45, 1.1, depth) * rng.randf_range(0.9, 1.1)
+		_stamp(out, leaf, center, rot, scale, light)
+	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
+	print("Textura '%s' (racimo de %d hojas) generada desde %s" % [name, count, ", ".join(p.srcs)])
+
+
+func _stamp(out: Image, leaf: Image, center: Vector2, rot: float, scale: float, light: float) -> void:
+	var lw := leaf.get_width() * scale
+	var lh := leaf.get_height() * scale
+	var r := ceili(Vector2(lw, lh).length() * 0.5)
+	var cs := cos(-rot)
+	var sn := sin(-rot)
+	for y in range(int(center.y) - r, int(center.y) + r):
+		for x in range(int(center.x) - r, int(center.x) + r):
+			if x < 0 or y < 0 or x >= out.get_width() or y >= out.get_height():
+				continue
+			var d := Vector2(x, y) - center
+			var u := (d.x * cs - d.y * sn) / scale + leaf.get_width() * 0.5
+			var v := (d.x * sn + d.y * cs) / scale + leaf.get_height() * 0.5
+			if u < 0 or v < 0 or u >= leaf.get_width() or v >= leaf.get_height():
+				continue
+			var c := leaf.get_pixel(int(u), int(v))
+			if c.a < 0.5:
+				continue
+			out.set_pixel(x, y, Color(c.r * light, c.g * light, c.b * light, 1.0))
 
 
 ## Mata de hojas: alfa = hoja (más clara que el hueco oscuro entre hojas)

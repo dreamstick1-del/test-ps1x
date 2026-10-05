@@ -436,45 +436,18 @@ func _stall(piece: String, center: Vector3, rot_y: float) -> void:
 
 
 func _build_trees() -> void:
-	var trunk_mesh := CylinderMesh.new()
-	trunk_mesh.top_radius = 0.14
-	trunk_mesh.bottom_radius = 0.22
-	trunk_mesh.height = 1.4
-	trunk_mesh.radial_segments = 5
-	trunk_mesh.rings = 1
-	var trunk_mat := PS1Assets.material("wood", Color(0.6, 0.45, 0.35), Vector2(1, 1))
-	var leaves := [
-		PS1Assets.flat(Color(0.16, 0.32, 0.14)),
-		PS1Assets.flat(Color(0.22, 0.38, 0.16)),
-		PS1Assets.flat(Color(0.28, 0.40, 0.15)),
-	]
 	var spots := [
 		Vector2(-16, -7), Vector2(-15.5, 0), Vector2(-16, 12.5), Vector2(-12, 16), Vector2(-4.5, 15.5),
 		Vector2(6.5, 16.0), Vector2(10, 15.5), Vector2(16, 15), Vector2(16.2, 7), Vector2(16, -4),
 		Vector2(16, -8.5), Vector2(5, -15), Vector2(-5, -15), Vector2(-8.5, -16.2),
 		Vector2(-16.5, -16.5), Vector2(-5, 8), Vector2(5, 8.5), Vector2(-16.2, -3.5), Vector2(4.6, -6.6),
 	]
+	var points: Array[Vector3] = []
 	for spot: Vector2 in spots:
-		var s := _rng.randf_range(0.85, 1.25)
-		var base := Vector3(spot.x, 0, spot.y)
-		var tree := Node3D.new()
-		tree.position = base
-		tree.scale = Vector3.ONE * s
-		tree.rotation.y = _rng.randf() * TAU
-		add_child(tree)
-		_mesh(tree, trunk_mesh, Vector3(0, 0.7, 0), trunk_mat)
-		var mat: Material = leaves[_rng.randi() % leaves.size()]
-		for layer in 3:
-			var cone := CylinderMesh.new()
-			cone.top_radius = 0.0
-			cone.bottom_radius = 1.25 - layer * 0.3
-			cone.height = 1.5
-			cone.radial_segments = 6
-			cone.rings = 1
-			_mesh(tree, cone, Vector3(0, 1.7 + layer * 0.75, 0), mat)
-		_cylinder_solid(0.3 * s, 2.0, base + Vector3(0, 1.0, 0))
-		map_features.append({"pos": spot, "size": Vector2(1.6, 1.6) * s, "rot": 0.0,
-			"color": Color(0.15, 0.3, 0.12), "round": true})
+		points.append(Vector3(spot.x, 0, spot.y))
+		map_features.append({"pos": spot, "size": Vector2(2.6, 2.6), "rot": 0.0,
+			"color": Color(0.2, 0.36, 0.14), "round": true})
+	Broadleaf.plant(self, points, 1403)
 
 
 ## Muros invisibles en el borde de la peana: Henry no puede caerse de la maqueta.

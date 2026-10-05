@@ -9,6 +9,7 @@ const TEXTURES := {
 	"hierba": "res://assets/textures/tallgrass_albedo.png",
 	"hojas": "res://assets/textures/shrub_albedo.png",
 	"morada": "res://assets/textures/purple_albedo.png",
+	"copa": "res://assets/textures/leafcluster_albedo.png",
 }
 
 ## Tipos: tamaño (ancho, alto), tinte y nº de tarjetas.
@@ -20,6 +21,9 @@ const KINDS := {
 	"trigo": {"size": Vector2(0.8, 1.0), "tint": Color(1.7, 1.3, 0.45), "cards": 2},
 	"arbusto": {"size": Vector2(1.7, 1.4), "tint": Color(0.8, 0.85, 0.75), "cards": 4, "texture": "hojas", "top": true},
 	"seto": {"size": Vector2(1.6, 1.15), "tint": Color(0.9, 0.95, 0.85), "cards": 4, "texture": "hojas", "top": true},
+	# Copa de árbol: dos pisos de tarjetas con racimos de hojas (ver Broadleaf).
+	"copa": {"size": Vector2(3.6, 2.6), "tint": Color(1, 1, 1), "cards": 4, "texture": "copa",
+		"layers": [[Vector2(3.6, 2.6), 1.55, 0.0], [Vector2(2.7, 2.1), 2.75, 0.45]]},
 	"ornamental": {"size": Vector2(1.35, 0.95), "tint": Color(1, 1, 1), "cards": 4, "texture": "morada", "top": true},
 }
 
@@ -68,31 +72,26 @@ static func material(texture := "hierba") -> ShaderMaterial:
 
 
 ## Tarjetas en estrella. Cada tarjeta usa un trozo distinto de la textura.
-static func _mesh(kind: String) -> ArrayMesh:
-	if _meshes.has(kind):
-		return _meshes[kind]
-	var def: Dictionary = KINDS[kind]
-	var size: Vector2 = def.size
-	var cards: int = def.cards
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+## Tarjetas en estrella (y copa horizontal opcional) a la altura `lift`.
+static func _cards(st: SurfaceTool, size: Vector2, cards: int, lift: float, turn: float, top_card: bool) -> void:
+	var up := Vector3.UP * lift
 	for c in cards:
-		var a := PI * c / cards
+		var a := PI * c / cards + turn
 		var dir := Vector3(cos(a), 0, sin(a)) * size.x * 0.5
 		# Cada tarjeta muestra la mata entera; una de cada dos, en espejo.
 		var u0 := 0.0 if c % 2 == 0 else 1.0
 		var u1 := 1.0 - u0
 		var corners := [
-			[-dir, Vector2(u0, 1)], [dir, Vector2(u1, 1)],
-			[dir + Vector3.UP * size.y, Vector2(u1, 0)], [-dir + Vector3.UP * size.y, Vector2(u0, 0)],
+			[up - dir, Vector2(u0, 1)], [up + dir, Vector2(u1, 1)],
+			[up + dir + Vector3.UP * size.y, Vector2(u1, 0)], [up - dir + Vector3.UP * size.y, Vector2(u0, 0)],
 		]
 		for idx in [0, 1, 2, 0, 2, 3]:
 			st.set_normal(Vector3.UP)
 			st.set_uv(corners[idx][1])
 			st.add_vertex(corners[idx][0])
-	if def.get("top", false):
-		# Copa: tarjeta horizontal a media altura, vista desde arriba.
-		var h := size.y * 0.8
+	if top_card:
+		# Copa: tarjeta horizontal, vista desde arriba.
+		var h := lift + size.y * 0.8
 		var r := size.x * 0.33
 		var top := [
 			[Vector3(-r, h, -r), Vector2(0, 0)], [Vector3(r, h, -r), Vector2(1, 0)],
@@ -102,6 +101,16 @@ static func _mesh(kind: String) -> ArrayMesh:
 			st.set_normal(Vector3.UP)
 			st.set_uv(top[idx][1])
 			st.add_vertex(top[idx][0])
+
+
+static func _mesh(kind: String) -> ArrayMesh:
+	if _meshes.has(kind):
+		return _meshes[kind]
+	var def: Dictionary = KINDS[kind]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for layer: Array in def.get("layers", [[def.size, 0.0, 0.0]]):
+		_cards(st, layer[0], def.cards, layer[1], layer[2], def.get("top", false) or def.has("layers"))
 	var mesh := st.commit()
 	_meshes[kind] = mesh
 	return mesh
