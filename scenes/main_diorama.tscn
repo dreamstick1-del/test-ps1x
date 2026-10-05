@@ -1,0 +1,155 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/main_diorama.gd" id="1_main"]
+[ext_resource type="Shader" path="res://shaders/ps1_post.gdshader" id="2_post"]
+[ext_resource type="Shader" path="res://shaders/crt_overlay.gdshader" id="3_crt"]
+[ext_resource type="Script" path="res://scripts/diorama_world.gd" id="4_world"]
+[ext_resource type="Script" path="res://scripts/diorama_camera.gd" id="5_cam"]
+[ext_resource type="PackedScene" path="res://scenes/player_henry.tscn" id="6_player"]
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/ui/dialog_box.gd" id="8_dialog"]
+[ext_resource type="PackedScene" path="res://scenes/main_menu.tscn" id="9_menu"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="10_pause"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
+shader = ExtResource("2_post")
+shader_parameter/dither_enabled = true
+shader_parameter/color_levels = 32.0
+shader_parameter/render_size = Vector2(320, 240)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("3_crt")
+shader_parameter/scanline_count = 240.0
+shader_parameter/scanline_strength = 0.28
+shader_parameter/vignette_strength = 0.55
+shader_parameter/corner_radius = 0.05
+
+[node name="MainDioramaScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="GameView" type="SubViewportContainer" parent="."]
+process_mode = 1
+texture_filter = 1
+material = SubResource("ShaderMaterial_post")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+stretch_shrink = 3
+
+[node name="SubViewport" type="SubViewport" parent="GameView"]
+handle_input_locally = false
+size = Vector2i(320, 240)
+render_target_update_mode = 4
+
+[node name="DioramaWorld" type="Node3D" parent="GameView/SubViewport"]
+script = ExtResource("4_world")
+
+[node name="Camera3D" type="Camera3D" parent="GameView/SubViewport/DioramaWorld"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 28, 44)
+current = true
+fov = 50.0
+far = 250.0
+script = ExtResource("5_cam")
+
+[node name="Player_Henry" parent="GameView/SubViewport/DioramaWorld" instance=ExtResource("6_player")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 6.2, 0, 2.6)
+
+[node name="UIView" type="SubViewportContainer" parent="."]
+process_mode = 3
+texture_filter = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+stretch_shrink = 3
+
+[node name="SubViewport" type="SubViewport" parent="UIView"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(320, 240)
+render_target_update_mode = 4
+
+[node name="UIRoot" type="Control" parent="UIView/SubViewport"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HUD_Overlay" type="Control" parent="UIView/SubViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("7_hud")
+
+[node name="DialogBox" type="PanelContainer" parent="UIView/SubViewport/UIRoot"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 170.0
+offset_right = 312.0
+offset_bottom = 232.0
+mouse_filter = 2
+script = ExtResource("8_dialog")
+
+[node name="MainMenu" parent="UIView/SubViewport/UIRoot" instance=ExtResource("9_menu")]
+layout_mode = 1
+
+[node name="PauseMenu" type="Control" parent="UIView/SubViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("10_pause")
+
+[node name="Fade" type="ColorRect" parent="UIView/SubViewport/UIRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="CRTOverlay" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_crt")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

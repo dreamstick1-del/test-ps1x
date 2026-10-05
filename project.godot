@@ -1,0 +1,47 @@
+; Engine configuration file.
+; Skalitz 1403 - Diorama retro PS1 para Godot 4
+
+config_version=5
+
+[application]
+
+config/name="Skalitz 1403 - Diorama PS1"
+config/description="Juego de aventura low-poly estilo PlayStation 1 que se ejecuta dentro de un diorama en miniatura."
+run/main_scene="res://scenes/main_diorama.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*res://autoload/game_manager.gd"
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[gui]
+
+theme/default_font_antialiasing=0
+theme/default_font_hinting=2
+theme/default_font_subpixel_positioning=0
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+textures/default_filters/use_nearest_mipmap_filter=true
+anti_aliasing/quality/msaa_3d=0
+anti_aliasing/quality/screen_space_aa=0
+
+[shader_globals]
+
+ps1_vertex_snap={
+"type": "float",
+"value": 1.0
+}
+ps1_affine={
+"type": "float",
+"value": 1.0
+}

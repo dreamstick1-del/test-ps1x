@@ -1,0 +1,549 @@
+class_name DioramaWorld
+extends Node3D
+## Construye proceduralmente el diorama de Skalitz (Bohemia, 1403): una maqueta
+## sobre una peana de madera, encima de una mesa. Todo se genera con primitivas
+## y texturas de 32x32 para no depender de assets externos.
+##
+## Coordenadas: +X este, -Z norte. La superficie jugable va de -18 a 18.
+## Registra "map_features" (huellas de edificios) para el minimapa.
+
+const HALF := 18.0
+const PLINTH_HEIGHT := 3.0
+
+var map_features: Array[Dictionary] = []
+
+var _fire_light: OmniLight3D
+var _fire_timer := 0.0
+var _rng := RandomNumberGenerator.new()
+
+
+func _ready() -> void:
+	add_to_group("diorama_world")
+	_rng.seed = 1403
+	_build_environment()
+	_build_base()
+	_build_ground()
+	_build_church()
+	_build_forge()
+	_build_houses()
+	_build_walls()
+	_build_props()
+	_build_trees()
+	_build_bounds()
+	_build_villagers()
+	_build_camera_zones()
+
+
+func _process(delta: float) -> void:
+	# Parpadeo del fuego de la fragua a ~12 fps: nervioso, como en la época.
+	_fire_timer -= delta
+	if _fire_light and _fire_timer <= 0.0:
+		_fire_timer = 1.0 / 12.0
+		_fire_light.light_energy = _rng.randf_range(1.4, 2.2)
+
+
+# --- Entorno -------------------------------------------------------------------
+
+func _build_environment() -> void:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.09, 0.07, 0.10)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.55, 0.66)
+	env.ambient_light_energy = 0.75
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.09, 0.07, 0.10)
+	env.fog_density = 0.012
+	var world_env := WorldEnvironment.new()
+	world_env.environment = env
+	add_child(world_env)
+
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-52, -35, 0)
+	sun.light_color = Color(1.0, 0.92, 0.78)
+	sun.light_energy = 1.05
+	sun.shadow_enabled = false # La PS1 no tenía sombras reales: usamos "blobs".
+	add_child(sun)
+
+
+## Peana de madera, capa de tierra, mesa y placa con el nombre.
+func _build_base() -> void:
+	var wood := PS1Assets.material("wood", Color(0.75, 0.6, 0.5), Vector2(0.35, 0.35))
+	_box(self, Vector3(HALF * 2 + 2.4, PLINTH_HEIGHT - 0.6, HALF * 2 + 2.4),
+		Vector3(0, -0.6 - (PLINTH_HEIGHT - 0.6) * 0.5, 0), wood)
+	# Capa de tierra subdividida: con el snapping de vértices, un polígono enorme
+	# "baila" lo suficiente en profundidad como para asomar a través de la hierba.
+	var soil := BoxMesh.new()
+	soil.size = Vector3(HALF * 2, 0.6, HALF * 2)
+	soil.subdivide_width = 18
+	soil.subdivide_depth = 18
+	_mesh(self, soil, Vector3(0, -0.34, 0), PS1Assets.material("dirt", Color(0.85, 0.8, 0.8), Vector2(0.6, 0.6)))
+
+	var table := PlaneMesh.new()
+	table.size = Vector2(150, 150)
+	table.subdivide_width = 14
+	table.subdivide_depth = 14
+	_mesh(self, table, Vector3(0, -PLINTH_HEIGHT, 0),
+		PS1Assets.material("wood", Color(0.35, 0.24, 0.2), Vector2(0.12, 0.12)))
+
+	var plaque_z := HALF + 1.2
+	_box(self, Vector3(9, 1.3, 0.1), Vector3(0, -1.8, plaque_z + 0.02), PS1Assets.flat(Color(0.45, 0.33, 0.12)))
+	var label := Label3D.new()
+	label.text = "SKALITZ  ·  ANNO 1403"
+	label.font_size = 48
+	label.pixel_size = 0.016
+	label.modulate = Color(1.0, 0.85, 0.45)
+	label.outline_size = 0
+	label.shaded = false
+	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	label.position = Vector3(0, -1.8, plaque_z + 0.08)
+	add_child(label)
+
+	# Suelo físico.
+	_solid(Vector3(HALF * 2, 1.0, HALF * 2), Vector3(0, -0.5, 0))
+
+
+func _build_ground() -> void:
+	_plane(Vector2(HALF * 2, HALF * 2), Vector3(0, 0, 0), PS1Assets.material("grass"), 18)
+	var dirt := PS1Assets.material("dirt", Color.WHITE, Vector2(0.6, 0.6))
+	_plane(Vector2(3.0, 12.0), Vector3(0, 0.02, 11.9), dirt, 6)      # camino sur
+	_plane(Vector2(4.5, 3.0), Vector3(7.5, 0.02, 1.0), dirt, 3)      # hacia la forja
+	_plane(Vector2(5.6, 2.4), Vector3(-8.2, 0.02, 4.5), dirt, 3)     # barrio oeste
+	_plane(Vector2(2.6, 1.4), Vector3(0, 0.02, -5.9), dirt, 2)       # puerta iglesia
+	_plane(Vector2(11, 11), Vector3(0, 0.035, 0), PS1Assets.material("cobble", Color.WHITE, Vector2(0.5, 0.5)), 6)
+	map_features.append({"pos": Vector2(0, 0), "size": Vector2(11, 11), "rot": 0.0, "color": Color(0.45, 0.43, 0.4)})
+	map_features.append({"pos": Vector2(0, 11.9), "size": Vector2(3, 12), "rot": 0.0, "color": Color(0.5, 0.38, 0.25)})
+
+
+# --- Edificios -----------------------------------------------------------------
+
+func _build_church() -> void:
+	var stone := PS1Assets.material("stone", Color(0.95, 0.93, 0.9), Vector2(0.5, 0.5))
+	var roof := PS1Assets.material("shingle", Color(0.6, 0.6, 0.75), Vector2(0.6, 0.6))
+	var dark := PS1Assets.flat(Color(0.06, 0.05, 0.05))
+
+	# Nave
+	_box(self, Vector3(6, 4.5, 8), Vector3(0, 2.25, -10), stone)
+	var prism := PrismMesh.new()
+	prism.size = Vector3(6.8, 3.0, 8.4)
+	_mesh(self, prism, Vector3(0, 4.5 + 1.5, -10), roof)
+	_box(self, Vector3(1.4, 2.4, 0.1), Vector3(0, 1.2, -5.97), PS1Assets.material("wood", Color(0.6, 0.45, 0.35), Vector2(1, 1)))
+	_box(self, Vector3(0.7, 1.4, 0.1), Vector3(0, 3.6, -5.97), dark) # rosetón
+	for z: float in [-12.0, -9.5, -7.5]:
+		for x: float in [-3.03, 3.03]:
+			_box(self, Vector3(0.1, 1.4, 0.6), Vector3(x, 2.8, z), dark)
+	_solid(Vector3(6, 4.5, 8), Vector3(0, 2.25, -10))
+
+	# Torre
+	_box(self, Vector3(3, 9, 3), Vector3(0, 4.5, -15.5), stone)
+	var spire := CylinderMesh.new()
+	spire.top_radius = 0.0
+	spire.bottom_radius = 2.4
+	spire.height = 4.0
+	spire.radial_segments = 4
+	spire.rings = 1
+	_mesh(self, spire, Vector3(0, 11, -15.5), roof, Vector3(0, PI / 4, 0))
+	for side: Vector3 in [Vector3(0, 0, 1.53), Vector3(1.53, 0, 0), Vector3(-1.53, 0, 0)]:
+		var size := Vector3(0.9, 1.4, 0.1) if side.x == 0.0 else Vector3(0.1, 1.4, 0.9)
+		_box(self, size, Vector3(0, 7.6, -15.5) + side, dark)
+	var gold := PS1Assets.flat(Color(0.9, 0.75, 0.3), 0.3)
+	_box(self, Vector3(0.12, 1.2, 0.12), Vector3(0, 13.5, -15.5), gold)
+	_box(self, Vector3(0.7, 0.12, 0.12), Vector3(0, 13.7, -15.5), gold)
+	_solid(Vector3(3, 9, 3), Vector3(0, 4.5, -15.5))
+
+	_feature(Vector3(0, 0, -10), Vector2(6, 8), Color(0.62, 0.62, 0.66))
+	_feature(Vector3(0, 0, -15.5), Vector2(3, 3), Color(0.7, 0.7, 0.75))
+
+
+func _build_forge() -> void:
+	# La herrería de Martin, el padre de Henry. Puerta mirando a la plaza (oeste).
+	var root := _house(Vector3(12, 0, 1), 6.0, 5.0, 3.2, -PI / 2, "shingle", Color(0.55, 0.35, 0.3))
+	var stone := PS1Assets.material("stone", Color(0.8, 0.78, 0.75), Vector2(0.8, 0.8))
+	# Chimenea
+	_box(root, Vector3(1.0, 3.0, 1.0), Vector3(1.6, 4.4, 1.2), stone)
+
+	# Fragua al aire libre bajo un tejadillo
+	var wood := PS1Assets.material("wood", Color.WHITE, Vector2(0.8, 0.8))
+	_box(self, Vector3(1.6, 0.9, 1.3), Vector3(8.2, 0.45, -0.9), stone)
+	_box(self, Vector3(1.1, 0.12, 0.8), Vector3(8.2, 0.93, -0.9), PS1Assets.flat(Color(1.0, 0.45, 0.1), 2.5))
+	for x: float in [7.3, 9.1]:
+		_box(self, Vector3(0.15, 2.3, 0.15), Vector3(x, 1.15, -1.7), wood)
+	var awning := PrismMesh.new()
+	awning.size = Vector3(2.4, 0.6, 2.2)
+	_mesh(self, awning, Vector3(8.2, 2.55, -0.9), PS1Assets.material("thatch", Color.WHITE, Vector2(0.8, 0.8)))
+	_solid(Vector3(1.6, 0.9, 1.3), Vector3(8.2, 0.45, -0.9))
+
+	_fire_light = OmniLight3D.new()
+	_fire_light.light_color = Color(1.0, 0.55, 0.2)
+	_fire_light.omni_range = 6.0
+	_fire_light.position = Vector3(8.2, 1.4, -0.9)
+	add_child(_fire_light)
+
+	# Yunque
+	var iron := PS1Assets.flat(Color(0.22, 0.22, 0.25))
+	_box(self, Vector3(0.5, 0.55, 0.5), Vector3(8.0, 0.28, 2.2), wood)
+	_box(self, Vector3(0.75, 0.2, 0.3), Vector3(8.0, 0.65, 2.2), iron)
+	_box(self, Vector3(0.25, 0.12, 0.2), Vector3(8.45, 0.68, 2.2), iron)
+	_solid(Vector3(0.75, 0.8, 0.5), Vector3(8.0, 0.4, 2.2))
+
+
+func _build_houses() -> void:
+	var houses := [
+		# pos, ancho, fondo, alto, rotación, tejado
+		[Vector3(-10, 0, -3), 5.0, 4.0, 3.0, 0.0, "thatch"],
+		[Vector3(-13, 0, 5), 4.0, 5.0, 2.8, PI / 2, "shingle"],
+		[Vector3(-8, 0, 12), 4.5, 4.0, 3.0, 0.0, "thatch"],
+		[Vector3(9, 0, -9), 5.0, 4.0, 3.0, 0.0, "shingle"],
+		[Vector3(14, 0, -13), 4.0, 4.0, 2.8, 0.0, "thatch"],
+		[Vector3(-13, 0, -13), 4.0, 5.0, 3.0, 0.0, "shingle"],
+		[Vector3(13, 0, 11), 4.0, 4.0, 2.8, -PI / 2, "thatch"],
+	]
+	for h: Array in houses:
+		var root := _house(h[0], h[1], h[2], h[3], h[4], h[5], Color(0.6, 0.45, 0.3))
+		if h[5] == "shingle":
+			_box(root, Vector3(0.6, 1.6, 0.6), Vector3(h[1] * 0.25, h[3] + 1.2, 0.0),
+				PS1Assets.material("stone", Color(0.8, 0.75, 0.7), Vector2(1, 1)))
+
+
+## Casa de entramado: paredes, tejado a dos aguas, puerta y ventanas en +Z local.
+func _house(pos: Vector3, w: float, d: float, h: float, rot_y: float, roof_tex: String,
+		map_color: Color) -> Node3D:
+	var root := Node3D.new()
+	root.position = pos
+	root.rotation.y = rot_y
+	add_child(root)
+
+	_box(root, Vector3(w, h, d), Vector3(0, h * 0.5, 0), PS1Assets.material("plaster"))
+	var roof_h := w * 0.42
+	var prism := PrismMesh.new()
+	prism.size = Vector3(w + 0.6, roof_h, d + 0.6)
+	var roof_tint := Color(1, 1, 1) if roof_tex == "thatch" else Color(0.95, 0.85, 0.85)
+	_mesh(root, prism, Vector3(0, h + roof_h * 0.5, 0), PS1Assets.material(roof_tex, roof_tint, Vector2(0.6, 0.6)))
+
+	var door_mat := PS1Assets.material("wood", Color(0.7, 0.55, 0.45), Vector2(1.2, 1.2))
+	_box(root, Vector3(0.9, 1.7, 0.1), Vector3(0, 0.85, d * 0.5 + 0.02), door_mat)
+	var window_mat := PS1Assets.flat(Color(0.12, 0.09, 0.06))
+	for sx: float in [-1.0, 1.0]:
+		_box(root, Vector3(0.55, 0.5, 0.1), Vector3(sx * w * 0.3, h * 0.6, d * 0.5 + 0.02), window_mat)
+		_box(root, Vector3(0.1, 0.5, 0.55), Vector3(sx * (w * 0.5 + 0.02), h * 0.6, 0), window_mat)
+
+	_solid(Vector3(w, h, d), pos + Vector3(0, h * 0.5, 0), rot_y)
+	_feature(pos, Vector2(w, d), map_color, rot_y)
+	return root
+
+
+func _build_walls() -> void:
+	var stone := PS1Assets.material("stone", Color(0.88, 0.86, 0.82), Vector2(0.5, 0.5))
+	var roof := PS1Assets.material("shingle", Color(0.9, 0.8, 0.8), Vector2(0.8, 0.8))
+	var z := HALF - 0.8
+	# Muralla sur con puerta
+	for x_range: Vector2 in [Vector2(-HALF + 0.4, -3.2), Vector2(3.2, HALF - 0.4)]:
+		var length := x_range.y - x_range.x
+		var center := Vector3((x_range.x + x_range.y) * 0.5, 0.9, z)
+		_box(self, Vector3(length, 1.8, 0.8), center, stone)
+		_solid(Vector3(length, 1.8, 0.8), center)
+		_feature(center, Vector2(length, 0.8), Color(0.55, 0.55, 0.55))
+		# Almenas
+		var x := x_range.x + 0.4
+		while x < x_range.y - 0.3:
+			_box(self, Vector3(0.5, 0.4, 0.8), Vector3(x, 2.0, z), stone)
+			x += 1.0
+	for sx: float in [-2.4, 2.4]:
+		_box(self, Vector3(1.6, 3.4, 1.6), Vector3(sx, 1.7, z), stone)
+		var cap := CylinderMesh.new()
+		cap.top_radius = 0.0
+		cap.bottom_radius = 1.3
+		cap.height = 1.4
+		cap.radial_segments = 4
+		cap.rings = 1
+		_mesh(self, cap, Vector3(sx, 4.1, z), roof, Vector3(0, PI / 4, 0))
+		_solid(Vector3(1.6, 3.4, 1.6), Vector3(sx, 1.7, z))
+		_feature(Vector3(sx, 0, z), Vector2(1.6, 1.6), Color(0.6, 0.6, 0.6))
+
+	# Empalizada de estacas en los otros tres lados.
+	var stake := CylinderMesh.new()
+	stake.top_radius = 0.0
+	stake.bottom_radius = 0.16
+	stake.height = 1.9
+	stake.radial_segments = 5
+	stake.rings = 1
+	var stake_mat := PS1Assets.material("wood", Color(0.8, 0.7, 0.6), Vector2(1, 1))
+	var p := -HALF + 0.3
+	while p <= HALF - 0.3:
+		var lean := _rng.randf_range(-0.08, 0.08)
+		_mesh(self, stake, Vector3(-HALF + 0.3, 0.95, p), stake_mat, Vector3(lean, 0, lean))
+		_mesh(self, stake, Vector3(HALF - 0.3, 0.95, p), stake_mat, Vector3(-lean, 0, lean))
+		_mesh(self, stake, Vector3(p, 0.95, -HALF + 0.3), stake_mat, Vector3(lean, 0, -lean))
+		p += 0.75
+
+
+# --- Atrezo ------------------------------------------------------------------
+
+func _build_props() -> void:
+	var stone := PS1Assets.material("stone", Color.WHITE, Vector2(1.0, 1.0))
+	var wood := PS1Assets.material("wood", Color.WHITE, Vector2(1.0, 1.0))
+	var thatch := PS1Assets.material("thatch", Color.WHITE, Vector2(1.0, 1.0))
+
+	# Pozo en el centro de la plaza
+	var ring := CylinderMesh.new()
+	ring.top_radius = 0.9
+	ring.bottom_radius = 0.95
+	ring.height = 0.8
+	ring.radial_segments = 8
+	ring.rings = 1
+	_mesh(self, ring, Vector3(0, 0.4, 0), stone)
+	var water := CylinderMesh.new()
+	water.top_radius = 0.7
+	water.bottom_radius = 0.7
+	water.height = 0.05
+	water.radial_segments = 8
+	_mesh(self, water, Vector3(0, 0.78, 0), PS1Assets.material("water", Color.WHITE, Vector2(1, 1)))
+	for sx: float in [-0.75, 0.75]:
+		_box(self, Vector3(0.14, 1.6, 0.14), Vector3(sx, 1.4, 0), wood)
+	_box(self, Vector3(1.7, 0.1, 0.1), Vector3(0, 1.95, 0), wood)
+	var well_roof := PrismMesh.new()
+	well_roof.size = Vector3(2.0, 0.7, 1.4)
+	_mesh(self, well_roof, Vector3(0, 2.45, 0), thatch, Vector3(0, PI / 2, 0))
+	_cylinder_solid(1.0, 1.0, Vector3(0, 0.5, 0))
+	_feature(Vector3.ZERO, Vector2(1.8, 1.8), Color(0.3, 0.4, 0.55))
+
+	# Puesto del mercado
+	var stall := Vector3(-3.8, 0, -3.0)
+	_box(self, Vector3(2.6, 0.9, 1.2), stall + Vector3(0, 0.45, 0), wood)
+	for corner: Vector3 in [Vector3(-1.2, 0, -0.5), Vector3(1.2, 0, -0.5), Vector3(-1.2, 0, 0.5), Vector3(1.2, 0, 0.5)]:
+		_box(self, Vector3(0.1, 2.0, 0.1), stall + corner + Vector3(0, 1.0, 0), wood)
+	for i in 4:
+		var stripe := PS1Assets.flat(Color(0.75, 0.15, 0.12) if i % 2 == 0 else Color(0.9, 0.85, 0.7))
+		_box(self, Vector3(0.7, 0.08, 1.5), stall + Vector3(-1.05 + i * 0.7, 2.05, 0), stripe)
+	for i in 5:
+		var produce := PS1Assets.flat([Color(0.8, 0.2, 0.1), Color(0.9, 0.7, 0.2), Color(0.4, 0.6, 0.2)][i % 3])
+		_box(self, Vector3(0.25, 0.2, 0.25), stall + Vector3(-1.0 + i * 0.5, 1.0, 0), produce)
+	_solid(Vector3(2.6, 0.9, 1.2), stall + Vector3(0, 0.45, 0))
+	_feature(stall, Vector2(2.6, 1.2), Color(0.7, 0.25, 0.2))
+
+	# Barriles junto a la forja
+	var barrel := CylinderMesh.new()
+	barrel.top_radius = 0.32
+	barrel.bottom_radius = 0.32
+	barrel.height = 0.8
+	barrel.radial_segments = 7
+	barrel.rings = 1
+	for pos: Vector3 in [Vector3(9.9, 0.4, 4.6), Vector3(9.2, 0.4, 4.9), Vector3(9.6, 1.2, 4.75)]:
+		_mesh(self, barrel, pos, wood)
+	_solid(Vector3(1.4, 1.2, 0.8), Vector3(9.55, 0.6, 4.75))
+
+	# Carro con heno junto a la puerta sur
+	var cart := Vector3(5.0, 0, 13.5)
+	_box(self, Vector3(1.6, 0.4, 2.6), cart + Vector3(0, 0.7, 0), wood)
+	_box(self, Vector3(1.4, 0.6, 2.2), cart + Vector3(0, 1.15, 0), thatch)
+	var wheel := CylinderMesh.new()
+	wheel.top_radius = 0.5
+	wheel.bottom_radius = 0.5
+	wheel.height = 0.12
+	wheel.radial_segments = 8
+	wheel.rings = 1
+	for sx: float in [-0.88, 0.88]:
+		_mesh(self, wheel, cart + Vector3(sx, 0.5, 0.3), wood, Vector3(0, 0, PI / 2))
+	_box(self, Vector3(0.1, 0.1, 2.0), cart + Vector3(0, 0.6, -2.0), wood)
+	_solid(Vector3(1.8, 1.5, 2.6), cart + Vector3(0, 0.75, 0))
+	_feature(cart, Vector2(1.6, 2.6), Color(0.6, 0.5, 0.25))
+
+	# Balas de heno
+	var bale := CylinderMesh.new()
+	bale.top_radius = 0.55
+	bale.bottom_radius = 0.55
+	bale.height = 1.0
+	bale.radial_segments = 8
+	bale.rings = 1
+	for pos: Vector3 in [Vector3(-15.5, 0.55, 9.5), Vector3(-14.4, 0.55, 10.2), Vector3(16.0, 0.55, 1.5)]:
+		_mesh(self, bale, pos, thatch, Vector3(0, 0, PI / 2))
+		_solid(Vector3(1.0, 1.1, 1.1), pos)
+
+
+func _build_trees() -> void:
+	var trunk_mesh := CylinderMesh.new()
+	trunk_mesh.top_radius = 0.14
+	trunk_mesh.bottom_radius = 0.22
+	trunk_mesh.height = 1.4
+	trunk_mesh.radial_segments = 5
+	trunk_mesh.rings = 1
+	var trunk_mat := PS1Assets.material("wood", Color(0.6, 0.45, 0.35), Vector2(1, 1))
+	var leaves := [
+		PS1Assets.flat(Color(0.16, 0.32, 0.14)),
+		PS1Assets.flat(Color(0.22, 0.38, 0.16)),
+		PS1Assets.flat(Color(0.28, 0.40, 0.15)),
+	]
+	var spots := [
+		Vector2(-16, -7), Vector2(-15.5, 0), Vector2(-16, 12.5), Vector2(-12, 16), Vector2(-4.5, 15.5),
+		Vector2(6.5, 16.0), Vector2(10, 15.5), Vector2(16, 15), Vector2(16.2, 7), Vector2(16, -4),
+		Vector2(16, -8.5), Vector2(5, -15), Vector2(-5, -15), Vector2(-8.5, -16.2), Vector2(9, -16.2),
+		Vector2(-16.5, -16.5), Vector2(-5, 8), Vector2(5, 8.5), Vector2(-16.2, -3.5), Vector2(4.6, -6.6),
+	]
+	for spot: Vector2 in spots:
+		var s := _rng.randf_range(0.85, 1.25)
+		var base := Vector3(spot.x, 0, spot.y)
+		var tree := Node3D.new()
+		tree.position = base
+		tree.scale = Vector3.ONE * s
+		tree.rotation.y = _rng.randf() * TAU
+		add_child(tree)
+		_mesh(tree, trunk_mesh, Vector3(0, 0.7, 0), trunk_mat)
+		var mat: Material = leaves[_rng.randi() % leaves.size()]
+		for layer in 3:
+			var cone := CylinderMesh.new()
+			cone.top_radius = 0.0
+			cone.bottom_radius = 1.25 - layer * 0.3
+			cone.height = 1.5
+			cone.radial_segments = 6
+			cone.rings = 1
+			_mesh(tree, cone, Vector3(0, 1.7 + layer * 0.75, 0), mat)
+		_cylinder_solid(0.3 * s, 2.0, base + Vector3(0, 1.0, 0))
+		map_features.append({"pos": spot, "size": Vector2(1.6, 1.6) * s, "rot": 0.0,
+			"color": Color(0.15, 0.3, 0.12), "round": true})
+
+
+## Muros invisibles en el borde de la peana: Henry no puede caerse de la maqueta.
+func _build_bounds() -> void:
+	var t := 1.0
+	var span := HALF * 2 + 2
+	_solid(Vector3(span, 6, t), Vector3(0, 3, -HALF - t * 0.5))
+	_solid(Vector3(span, 6, t), Vector3(0, 3, HALF + t * 0.5))
+	_solid(Vector3(t, 6, span), Vector3(-HALF - t * 0.5, 3, 0))
+	_solid(Vector3(t, 6, span), Vector3(HALF + t * 0.5, 3, 0))
+
+
+# --- Personajes y cámaras -------------------------------------------------------
+
+func _build_villagers() -> void:
+	_villager("Martin", Vector3(8.6, 0, 3.4), PI / 2, {
+		"model": "res://assets/characters/Character_02.fbx", "outfit": "herrero", "body_scale": 1.04,
+	}, [
+		"¡Henry! Por fin apareces. ¿Dónde te habías metido?",
+		"Tengo un encargo importante para la fragua y necesito tus manos.",
+		"Date una vuelta por el pueblo si quieres, pero no tardes. El hierro no espera.",
+	])
+	_villager("Theresa", Vector3(-2.4, 0, 2.6), PI * 0.85, {
+		"tunic_color": Color(0.30, 0.38, 0.55), "sleeve_color": Color(0.85, 0.80, 0.68),
+		"hair_color": Color(0.55, 0.32, 0.14), "pants_color": Color(0.30, 0.38, 0.55),
+		"body_scale": 0.94,
+	}, [
+		"Buenos días, Henry. Qué mañana tan tranquila, ¿verdad?",
+		"Dicen que por el camino del sur se han visto columnas de humo.",
+		"Seguro que no es nada... seguro.",
+	])
+	_villager("Padre Ondřej", Vector3(1.9, 0, -5.2), PI, {
+		"model": "res://assets/characters/Character_03.fbx", "outfit": "cura",
+	}, [
+		"Que Dios te guarde, hijo.",
+		"Esta iglesia lleva en pie más de cien años.",
+		"Rezo para que siga así otros cien.",
+	])
+	_villager("Guardia", Vector3(2.7, 0, 15.3), 0.0, {
+		"model": "res://assets/characters/Character_04.fbx", "outfit": "guardia", "body_scale": 1.03,
+	}, [
+		"Alto ahí, muchacho. ¿Pensabas salir del pueblo?",
+		"Hay rumores de jinetes extranjeros por los caminos.",
+		"Vuelve a la plaza. Aquí dentro estás más seguro.",
+	])
+	_villager("Kuneš", Vector3(-9.7, 0, 4.4), -PI / 2, {
+		"model": "res://assets/characters/Character_05.fbx", "outfit": "campesino",
+	}, [
+		"¿Qué miras, chaval? ¿Nunca has visto a un hombre descansar?",
+		"Este año la cosecha ha sido buena. Demasiado buena, dirá alguno.",
+		"Si ves a mi mujer, yo no estoy aquí.",
+	])
+
+
+func _villager(display_name: String, pos: Vector3, rot_y: float, look: Dictionary,
+		lines: Array) -> void:
+	var v := Villager.new()
+	v.name = display_name.replace(" ", "_")
+	v.display_name = display_name
+	v.lines = PackedStringArray(lines)
+	v.appearance = look
+	v.position = pos
+	v.rotation.y = rot_y
+	add_child(v)
+
+
+## Planos fijos por zona. Pequeños solapes entre zonas evitan parpadeos de cámara.
+func _build_camera_zones() -> void:
+	_camera_zone("LA IGLESIA", Vector3(0, 0, -11.75), Vector3(36.4, 4, 12.9),
+		Vector3(0, 9.5, -1.0), Vector3(0, 2.5, -12))
+	_camera_zone("LA PLAZA", Vector3(0, 0, 0.2), Vector3(16, 4, 11.6),
+		Vector3(-9, 8, 10), Vector3(0, 0.5, 0))
+	_camera_zone("BARRIO OESTE", Vector3(-12.95, 0, 6.3), Vector3(10.5, 4, 23.8),
+		Vector3(-4, 9, 19), Vector3(-12, 0.5, 3))
+	_camera_zone("LA FORJA", Vector3(12.95, 0, 6.3), Vector3(10.5, 4, 23.8),
+		Vector3(3.5, 8.5, 15), Vector3(11, 0.5, 2))
+	_camera_zone("PUERTA SUR", Vector3(0, 0, 11.95), Vector3(16, 4, 12.5),
+		Vector3(0, 12, 21.5), Vector3(0, 0.5, 9.5))
+
+
+func _camera_zone(zone_name: String, center: Vector3, size: Vector3, cam: Vector3, look: Vector3) -> void:
+	var zone := CameraZone.new()
+	zone.name = "Zone_" + zone_name.replace(" ", "_")
+	zone.zone_name = zone_name
+	zone.size = size
+	zone.camera_position = cam
+	zone.look_target = look
+	zone.position = center
+	add_child(zone)
+
+
+# --- Utilidades ----------------------------------------------------------------
+
+func _mesh(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material, rot := Vector3.ZERO) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	return mi
+
+
+func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot_y := 0.0) -> MeshInstance3D:
+	var box := BoxMesh.new()
+	box.size = size
+	return _mesh(parent, box, pos, mat, Vector3(0, rot_y, 0))
+
+
+## Plano subdividido: con mapeado afín, los polígonos grandes se deforman
+## demasiado, así que (como en la PS1) se trocean en polígonos pequeños.
+func _plane(size: Vector2, pos: Vector3, mat: Material, subdivisions: int) -> MeshInstance3D:
+	var plane := PlaneMesh.new()
+	plane.size = size
+	plane.subdivide_width = subdivisions
+	plane.subdivide_depth = subdivisions
+	return _mesh(self, plane, pos, mat)
+
+
+func _solid(size: Vector3, pos: Vector3, rot_y := 0.0) -> void:
+	var body := StaticBody3D.new()
+	body.position = pos
+	body.rotation.y = rot_y
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	body.add_child(cs)
+	add_child(body)
+
+
+func _cylinder_solid(radius: float, height: float, pos: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.position = pos
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = height
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	body.add_child(cs)
+	add_child(body)
+
+
+func _feature(pos: Vector3, size: Vector2, color: Color, rot_y := 0.0) -> void:
+	map_features.append({"pos": Vector2(pos.x, pos.z), "size": size, "rot": rot_y, "color": color})
