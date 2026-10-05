@@ -145,10 +145,8 @@ func _build_base() -> void:
 
 
 func _build_ground() -> void:
-	var dirt := PS1Assets.material("dirt", Color.WHITE, Vector2(0.6, 0.6))
+	# Las sendas de tierra las pinta el terreno (Countryside.VILLAGE_PATHS).
 	Paving.build(self, Rect2(-1.6, 5.5, 3.2, 11.3), 0.7, [0.6, 0.8, 1.0], 11) # calle a la puerta sur
-	_plane(Vector2(4.5, 3.0), Vector3(7.5, 0.02, 1.0), dirt, 3)      # hacia la forja
-	_plane(Vector2(5.6, 2.4), Vector3(-8.2, 0.02, 4.5), dirt, 3)     # barrio oeste
 	# Plaza enlosada con losas de piedra reales (geometría + relieve de la foto).
 	Paving.build(self, Rect2(-5.5, -5.5, 11, 11))
 	Paving.build(self, Rect2(-1.3, -6.6, 2.6, 1.1), 0.9, [0.9, 1.2, 1.5], 7)

@@ -7,6 +7,7 @@ extends RefCounted
 const SHADER := preload("res://shaders/ps1_spatial.gdshader")
 const VIEWMODEL_SHADER := preload("res://shaders/ps1_viewmodel.gdshader")
 const RELIEF_SHADER := preload("res://shaders/ps1_relief.gdshader")
+const TERRAIN_SHADER := preload("res://shaders/ps1_terrain.gdshader")
 const TEX_SIZE := 32
 
 static var _textures := {}
@@ -137,6 +138,17 @@ static func relief(albedo_path: String, normal_path: String, uv_scale := Vector2
 		mat.set_shader_parameter("uv_scale", uv_scale)
 		_materials[key] = mat
 	return _materials[key]
+
+
+## Terreno de pasto con variantes (frondoso, seco, barro) desde una sola foto.
+static func terrain() -> ShaderMaterial:
+	if not _materials.has("__terrain"):
+		var mat := ShaderMaterial.new()
+		mat.shader = TERRAIN_SHADER
+		mat.set_shader_parameter("grass_texture", load("res://assets/textures/grass_albedo.png"))
+		mat.set_shader_parameter("grass_normal", load("res://assets/textures/grass_normal.png"))
+		_materials["__terrain"] = mat
+	return _materials["__terrain"]
 
 
 ## Material del arma en primera persona (sin test de profundidad).

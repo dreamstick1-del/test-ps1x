@@ -12,7 +12,7 @@ extends RefCounted
 
 const HALF := 48.0
 const VILLAGE := 20.0
-const STEP := 2.0
+const STEP := 1.0
 
 ## Caminos: polilíneas (x, z). Se aplanan y se pintan de tierra.
 const ROADS := [
@@ -30,6 +30,10 @@ const CLIMBING_ROADS := [3]
 
 const FIELDS := [Rect2(20, -17, 8, 13), Rect2(20, 4, 8, 12), Rect2(-31, 34, 12, 9)]
 const PASTURE := Rect2(39, 4, 8, 28)
+## Sendas de tierra dentro del pueblo.
+const VILLAGE_PATHS := [Rect2(5.3, -0.5, 4.5, 3.0), Rect2(-11.0, 3.3, 5.6, 2.4), Rect2(-0.9, 5.5, 1.8, 0.6)]
+## Suelo de bosque: (x, z, radio).
+const FOREST_FLOORS := [Vector3(34, -36, 14), Vector3(-36, -38, 12), Vector3(-40, 26, 9), Vector3(18, 36, 10)]
 const CASTLE := Vector2(0, -37)
 const MINE_HILL := Vector2(-42, -6)
 
@@ -131,14 +135,16 @@ func _build_terrain() -> void:
 			var quad := [Vector2(x0, z0), Vector2(x0 + STEP, z0), Vector2(x0 + STEP, z0 + STEP), Vector2(x0, z0 + STEP)]
 			for idx in [0, 1, 2, 0, 2, 3]:
 				var p: Vector2 = quad[idx]
-				st.set_color(_ground_color(p.x, p.y))
+				var g := ground_sample(p.x, p.y)
+				st.set_color(g.color)
+				st.set_uv2(Vector2(g.mud, 0.0))
 				st.add_vertex(Vector3(p.x, height(p.x, p.y), p.y))
 	st.generate_normals()
 	var mesh := st.commit()
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
 	mi.mesh = mesh
-	mi.material_override = PS1Assets.vertex_colored("grass")
+	mi.material_override = PS1Assets.terrain()
 	w.add_child(mi)
 
 	var body := StaticBody3D.new()
@@ -159,22 +165,72 @@ func _build_terrain() -> void:
 		w._mesh(w, box, side[0], dirt)
 
 
-func _ground_color(x: float, z: float) -> Color:
-	var n := 0.9 + 0.1 * sin(x * 0.7) * cos(z * 0.5) + rng.randf_range(-0.04, 0.04)
-	var c := Color(n, n, n * 0.95)
-	var road := road_distance(x, z)
-	if road < 2.2:
-		c = c.lerp(Color(1.25, 0.85, 0.55), 0.85) # Tierra del camino sobre la hierba.
-	for f: Rect2 in FIELDS:
-		if f.grow(0.5).has_point(Vector2(x, z)):
-			c = Color(1.2, 0.9, 0.55) if int(floor(x)) % 2 == 0 else Color(1.05, 0.95, 0.5) # Surcos.
-	var rd := absf(x - river_x(z))
-	if rd < 4.5:
-		c = c.lerp(Color(1.3, 1.15, 0.8), 0.6) # Orilla de arena.
+## Qué variante de pasto lleva cada punto del mapa (ver ps1_terrain.gdshader):
+##   color.rgb = tinte (roca, arena, sombra del bosque, surcos)
+##   color.a   = sequedad: 0 frondoso, 0.5 como la foto, 1 paja
+##   mud       = 0 pasto, 1 tierra pisada (caminos, corrales, campos arados)
+func ground_sample(x: float, z: float) -> Dictionary:
+	var p := Vector2(x, z)
+	var tint := Color(1, 1, 1)
+	var dry := 0.3 + 0.18 * sin(x * 0.13 + 1.7) * cos(z * 0.11)
+	var mud := 0.0
 	var h := height(x, z)
+
+	# Dentro del pueblo: huertos y patios bien regados, sendas pisadas.
+	if absf(x) < 18.0 and absf(z) < 18.0:
+		dry = 0.2
+		for path: Rect2 in VILLAGE_PATHS:
+			mud = maxf(mud, 1.0 - clampf(_rect_distance(p, path) / 1.2, 0.0, 1.0))
+	# Colinas: más secas cuanto más altas; roca en las cumbres.
+	if h > 1.5:
+		dry = maxf(dry, clampf(0.55 + (h - 1.5) * 0.12, 0.0, 0.95))
 	if h > 3.0:
-		c = c.lerp(Color(0.9, 0.9, 0.85), clampf((h - 3.0) / 4.0, 0.0, 0.6)) # Roca en las cumbres.
-	return c
+		tint = tint.lerp(Color(0.9, 0.9, 0.85), clampf((h - 3.0) / 4.0, 0.0, 0.6))
+	# Bosques: suelo en sombra con pinocha.
+	for f: Vector3 in FOREST_FLOORS:
+		var k := 1.0 - clampf(p.distance_to(Vector2(f.x, f.y)) / f.z, 0.0, 1.0)
+		tint = tint.lerp(Color(0.72, 0.74, 0.68), k * 0.8)
+		mud = maxf(mud, k * 0.3)
+	# Campos de trigo: tierra arada con surcos y rastrojo seco alrededor.
+	for f: Rect2 in FIELDS:
+		var d := _rect_distance(p, f)
+		if d < 3.0:
+			dry = maxf(dry, 0.85 - d * 0.1)
+		if f.grow(0.3).has_point(p):
+			mud = 0.85
+			tint = Color(1.05, 0.95, 0.85) if int(floor(x * 2.0)) % 2 == 0 else Color(0.85, 0.78, 0.7)
+	# Granja: corral de cerdos embarrado y patio pisado.
+	mud = maxf(mud, 1.0 - clampf(_rect_distance(p, Rect2(-17, 31, 6, 5)) / 1.0, 0.0, 1.0))
+	if Rect2(-30, 22, 12, 14).has_point(p):
+		mud = maxf(mud, 0.35)
+	# Carboneras y mina: tierra negra y removida.
+	var coal := 1.0 - clampf(p.distance_to(Vector2(-36, 40)) / 7.0, 0.0, 1.0)
+	if coal > 0.0:
+		mud = maxf(mud, coal)
+		tint = tint.lerp(Color(0.55, 0.52, 0.5), coal)
+	mud = maxf(mud, 1.0 - clampf(p.distance_to(Vector2(-29, -4)) / 6.0, 0.0, 1.0))
+	# Orillas del río: hierba húmeda, luego arena y barro.
+	var rd := absf(x - river_x(z))
+	if rd < 6.5:
+		dry = minf(dry, 0.1)
+	if rd < 4.5:
+		tint = tint.lerp(Color(1.25, 1.12, 0.85), 0.5)
+		mud = maxf(mud, 0.5)
+	# Pastos junto al río: verdes y jugosos; barro junto a la puerta y el abrevadero.
+	if PASTURE.grow(1.0).has_point(p):
+		dry = 0.0
+		tint = Color(1, 1, 1)
+		mud = 0.0
+		mud = maxf(mud, 1.0 - clampf(p.distance_to(Vector2(40, 11)) / 3.0, 0.0, 1.0))
+	# Caminos: tierra pisada en el centro que se funde con el pasto.
+	var road := road_distance(x, z)
+	mud = maxf(mud, 1.0 - smoothstep(1.2, 2.6, road))
+	return {"color": Color(tint.r, tint.g, tint.b, clampf(dry, 0.0, 1.0)), "mud": clampf(mud, 0.0, 1.0)}
+
+
+static func _rect_distance(p: Vector2, r: Rect2) -> float:
+	var d := Vector2(maxf(maxf(r.position.x - p.x, 0.0), p.x - r.end.x), maxf(maxf(r.position.y - p.y, 0.0), p.y - r.end.y))
+	return d.length()
 
 
 # --- Río, puente y molino -----------------------------------------------------------
