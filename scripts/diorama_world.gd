@@ -158,49 +158,39 @@ func _build_ground() -> void:
 # --- Edificios -----------------------------------------------------------------
 
 func _build_church() -> void:
-	var stone := PS1Assets.material("stone", Color(0.95, 0.93, 0.9), Vector2(0.5, 0.5))
-	var roof := PS1Assets.material("shingle", Color(0.6, 0.6, 0.75), Vector2(0.6, 0.6))
-	var dark := PS1Assets.flat(Color(0.06, 0.05, 0.05))
+	# Nave de piedra (2 módulos de largo, 2 alturas) con la puerta en el hastial sur.
+	var nave := _building(Vector3(0, 0, -9.5), 2, 2, -PI / 2, {
+		"walls": ["stone_square"], "roof": "roof_blue", "door": "", "window": "window_rounded",
+		"chimney": false, "flowers": false, "map_color": Color(0.62, 0.62, 0.66),
+	})
+	Kit.place(nave, "door_stone_double", Vector3(4.05, 0, 0), PI / 2)
+	Kit.place(nave, "window_round", Vector3(4.05, 3.9, 0), PI / 2)
 
-	# Nave
-	_box(self, Vector3(6, 4.5, 8), Vector3(0, 2.25, -10), stone)
-	var prism := PrismMesh.new()
-	prism.size = Vector3(6.8, 3.0, 8.4)
-	_mesh(self, prism, Vector3(0, 4.5 + 1.5, -10), roof)
-	_box(self, Vector3(1.4, 2.4, 0.1), Vector3(0, 1.2, -5.97), PS1Assets.material("wood", Color(0.6, 0.45, 0.35), Vector2(1, 1)))
-	_box(self, Vector3(0.7, 1.4, 0.1), Vector3(0, 3.6, -5.97), dark) # rosetón
-	for z: float in [-12.0, -9.5, -7.5]:
-		for x: float in [-3.03, 3.03]:
-			_box(self, Vector3(0.1, 1.4, 0.6), Vector3(x, 2.8, z), dark)
-	_solid(Vector3(6, 4.5, 8), Vector3(0, 2.25, -10))
-
-	# Torre
-	_box(self, Vector3(3, 9, 3), Vector3(0, 4.5, -15.5), stone)
-	var spire := CylinderMesh.new()
-	spire.top_radius = 0.0
-	spire.bottom_radius = 2.4
-	spire.height = 4.0
-	spire.radial_segments = 4
-	spire.rings = 1
-	_mesh(self, spire, Vector3(0, 11, -15.5), roof, Vector3(0, PI / 4, 0))
-	for side: Vector3 in [Vector3(0, 0, 1.53), Vector3(1.53, 0, 0), Vector3(-1.53, 0, 0)]:
-		var size := Vector3(0.9, 1.4, 0.1) if side.x == 0.0 else Vector3(0.1, 1.4, 0.9)
-		_box(self, size, Vector3(0, 7.6, -15.5) + side, dark)
+	# Campanario: tres módulos de piedra y tejado a cuatro aguas.
+	var tower := Node3D.new()
+	tower.position = Vector3(0, 0, -15.5)
+	add_child(tower)
+	for f in 3:
+		Kit.place(tower, "stone_square", Vector3(-2, f * 3.0, 2))
+	Kit.place(tower, "roof_blue_square_fancy", Vector3(-2, 9.0, 2))
+	for a in [0.0, PI / 2, -PI / 2]:
+		var dir := Vector3(sin(a), 0, cos(a))
+		Kit.place(tower, "window_rounded", dir * 2.06 + Vector3(0, 7.0, 0), a)
 	var gold := PS1Assets.flat(Color(0.9, 0.75, 0.3), 0.3)
-	_box(self, Vector3(0.12, 1.2, 0.12), Vector3(0, 13.5, -15.5), gold)
-	_box(self, Vector3(0.7, 0.12, 0.12), Vector3(0, 13.7, -15.5), gold)
-	_solid(Vector3(3, 9, 3), Vector3(0, 4.5, -15.5))
-
-	_feature(Vector3(0, 0, -10), Vector2(6, 8), Color(0.62, 0.62, 0.66))
-	_feature(Vector3(0, 0, -15.5), Vector2(3, 3), Color(0.7, 0.7, 0.75))
+	_box(tower, Vector3(0.12, 1.2, 0.12), Vector3(0, 12.6, 0), gold)
+	_box(tower, Vector3(0.7, 0.12, 0.12), Vector3(0, 12.8, 0), gold)
+	_solid(Vector3(4, 9, 4), Vector3(0, 4.5, -15.5))
+	_feature(Vector3(0, 0, -15.5), Vector2(4, 4), Color(0.7, 0.7, 0.75))
 
 
 func _build_forge() -> void:
 	# La herrería de Martin, el padre de Henry. Puerta mirando a la plaza (oeste).
-	var root := _house(Vector3(12, 0, 1), 6.0, 5.0, 3.2, -PI / 2, "shingle", Color(0.55, 0.35, 0.3))
+	var root := _building(Vector3(12, 0, 1), 2, 1, -PI / 2, {
+		"walls": ["plaster_wall_stone_base"], "roof": "roof_red", "door": "door_wood_double",
+		"map_color": Color(0.55, 0.35, 0.3),
+	})
+	Kit.place(root, "overhang_large", Vector3(-2.0, 2.4, 2.0))
 	var stone := PS1Assets.material("stone", Color(0.8, 0.78, 0.75), Vector2(0.8, 0.8))
-	# Chimenea
-	_box(root, Vector3(1.0, 3.0, 1.0), Vector3(1.6, 4.4, 1.2), stone)
 
 	# Fragua al aire libre bajo un tejadillo
 	var wood := PS1Assets.material("wood", Color.WHITE, Vector2(0.8, 0.8))
@@ -229,46 +219,73 @@ func _build_forge() -> void:
 
 func _build_houses() -> void:
 	var houses := [
-		# pos, ancho, fondo, alto, rotación, tejado
-		[Vector3(-10, 0, -3), 5.0, 4.0, 3.0, 0.0, "thatch"],
-		[Vector3(-13, 0, 5), 4.0, 5.0, 2.8, PI / 2, "shingle"],
-		[Vector3(-8, 0, 12), 4.5, 4.0, 3.0, 0.0, "thatch"],
-		[Vector3(9, 0, -9), 5.0, 4.0, 3.0, 0.0, "shingle"],
-		[Vector3(14, 0, -13), 4.0, 4.0, 2.8, 0.0, "thatch"],
-		[Vector3(-13, 0, -13), 4.0, 5.0, 3.0, 0.0, "shingle"],
-		[Vector3(13, 0, 11), 4.0, 4.0, 2.8, -PI / 2, "thatch"],
+		# posición, módulos de largo, plantas, rotación, tejado
+		[Vector3(-11, 0, -3), 2, 1, 0.0, "roof_straw"],
+		[Vector3(-13, 0, 10), 1, 2, PI / 2, "roof_red"],
+		[Vector3(-8, 0, 12), 1, 2, 0.0, "roof_straw"],
+		[Vector3(9, 0, -8), 2, 2, 0.0, "roof_red"],
+		[Vector3(14, 0, -13), 1, 1, 0.0, "roof_straw"],
+		[Vector3(-13, 0, -13), 1, 2, 0.0, "roof_blue"],
+		[Vector3(13, 0, 11), 1, 1, -PI / 2, "roof_red"],
 	]
 	for h: Array in houses:
-		var root := _house(h[0], h[1], h[2], h[3], h[4], h[5], Color(0.6, 0.45, 0.3))
-		if h[5] == "shingle":
-			_box(root, Vector3(0.6, 1.6, 0.6), Vector3(h[1] * 0.25, h[3] + 1.2, 0.0),
-				PS1Assets.material("stone", Color(0.8, 0.75, 0.7), Vector2(1, 1)))
+		_building(h[0], h[1], h[2], h[3], {"roof": h[4]})
 
 
-## Casa de entramado: paredes, tejado a dos aguas, puerta y ventanas en +Z local.
-func _house(pos: Vector3, w: float, d: float, h: float, rot_y: float, roof_tex: String,
+## Compatibilidad con Countryside: casa a partir de medidas aproximadas.
+func _house(pos: Vector3, w: float, _d: float, h: float, rot_y: float, roof_tex: String,
 		map_color: Color) -> Node3D:
+	var roof: String = {"thatch": "roof_straw", "shingle": "roof_red"}.get(roof_tex, "roof_red")
+	return _building(pos, maxi(1, roundi(w / 4.0)), 2 if h >= 3.4 else 1, rot_y,
+		{"roof": roof, "map_color": map_color})
+
+
+## Edificio modular del kit: `cells` módulos de 4x4 m a lo largo de X local,
+## `plants` plantas de 3 m, tejado a dos aguas, puerta y ventanas en +Z local.
+## opts: walls (lista de piezas de pared), roof, door, window, chimney, flowers, map_color.
+func _building(pos: Vector3, cells: int, plants: int, rot_y: float, opts := {}) -> Node3D:
 	var root := Node3D.new()
 	root.position = pos
 	root.rotation.y = rot_y
 	add_child(root)
+	var seed_i := int(absf(pos.x * 7.0 + pos.z * 13.0))
+	var length := cells * 4.0
+	var x0 := -length * 0.5
+	var roof: String = opts.get("roof", "roof_red")
+	var walls: Array = opts.get("walls", [
+		["plaster_wall_stone_base", "plaster_wall_stone_base_alt", "plaster_wall", "plaster_wall_alt"][seed_i % 4],
+		["plaster_wall", "plaster_wall_alt"][seed_i % 2],
+	])
+	var door: String = opts.get("door", ["door_wood", "door_wood_rounded"][seed_i % 2])
+	var window: String = opts.get("window", ["window_square", "window_rectangle", "window_rounded"][seed_i % 3])
+	var door_cell := (cells - 1) / 2 if cells > 1 else 0
+	var door_x := x0 + door_cell * 4.0 + 2.0 + (1.0 if cells == 1 else 0.0)
 
-	_box(root, Vector3(w, h, d), Vector3(0, h * 0.5, 0), PS1Assets.material("plaster"))
-	var roof_h := w * 0.42
-	var prism := PrismMesh.new()
-	prism.size = Vector3(w + 0.6, roof_h, d + 0.6)
-	var roof_tint := Color(1, 1, 1) if roof_tex == "thatch" else Color(0.95, 0.85, 0.85)
-	_mesh(root, prism, Vector3(0, h + roof_h * 0.5, 0), PS1Assets.material(roof_tex, roof_tint, Vector2(0.6, 0.6)))
+	for f in plants:
+		var wall: String = walls[mini(f, walls.size() - 1)]
+		for c in cells:
+			Kit.place(root, wall, Vector3(x0 + c * 4.0, f * 3.0, 2.0))
+			var cx := x0 + c * 4.0 + 2.0
+			# Ventanas delante (salvo donde va la puerta) y detrás.
+			for side: float in [1.0, -1.0]:
+				var wx := cx - (1.0 if cells == 1 and f == 0 and side > 0.0 and door != "" else 0.0)
+				if f == 0 and side > 0.0 and door != "" and c == door_cell and cells > 1:
+					continue
+				Kit.place(root, window, Vector3(wx, f * 3.0 + 1.1, side * 2.06), 0.0 if side > 0.0 else PI)
+				if opts.get("flowers", true) and f == 0 and side > 0.0 and (seed_i + c) % 2 == 0:
+					Kit.place(root, ["flower_box", "flower_box_alt", "flower_box_alt2"][(seed_i + c) % 3],
+						Vector3(wx, 0.55, 2.35))
+	for c in cells:
+		Kit.place(root, roof, Vector3(x0 + c * 4.0, plants * 3.0, 2.0))
+	if door != "":
+		Kit.place(root, door, Vector3(door_x, 0, 2.03))
+	if opts.get("chimney", roof != "roof_straw"):
+		Kit.place(root, "chimney_large", Vector3(-x0 - 1.0, (plants - 1) * 3.0, -0.7))
+	if seed_i % 3 == 0 and plants > 1:
+		Kit.place(root, ["vine_hanging", "vine_hanging_alt"][seed_i % 2], Vector3(x0 + 0.4, 3.0, 2.08))
 
-	var door_mat := PS1Assets.material("wood", Color(0.7, 0.55, 0.45), Vector2(1.2, 1.2))
-	_box(root, Vector3(0.9, 1.7, 0.1), Vector3(0, 0.85, d * 0.5 + 0.02), door_mat)
-	var window_mat := PS1Assets.flat(Color(0.12, 0.09, 0.06))
-	for sx: float in [-1.0, 1.0]:
-		_box(root, Vector3(0.55, 0.5, 0.1), Vector3(sx * w * 0.3, h * 0.6, d * 0.5 + 0.02), window_mat)
-		_box(root, Vector3(0.1, 0.5, 0.55), Vector3(sx * (w * 0.5 + 0.02), h * 0.6, 0), window_mat)
-
-	_solid(Vector3(w, h, d), pos + Vector3(0, h * 0.5, 0), rot_y)
-	_feature(pos, Vector2(w, d), map_color, rot_y)
+	_solid(Vector3(length, plants * 3.0, 4.0), pos + Vector3(0, plants * 1.5, 0), rot_y)
+	_feature(pos, Vector2(length, 4.0), opts.get("map_color", Color(0.6, 0.45, 0.3)), rot_y)
 	return root
 
 
@@ -362,30 +379,25 @@ func _build_props() -> void:
 	_cylinder_solid(1.0, 1.0, Vector3(0, 0.5, 0))
 	_feature(Vector3.ZERO, Vector2(1.8, 1.8), Color(0.3, 0.4, 0.55))
 
-	# Puesto del mercado
-	var stall := Vector3(-3.8, 0, -3.0)
-	_box(self, Vector3(2.6, 0.9, 1.2), stall + Vector3(0, 0.45, 0), wood)
-	for corner: Vector3 in [Vector3(-1.2, 0, -0.5), Vector3(1.2, 0, -0.5), Vector3(-1.2, 0, 0.5), Vector3(1.2, 0, 0.5)]:
-		_box(self, Vector3(0.1, 2.0, 0.1), stall + corner + Vector3(0, 1.0, 0), wood)
-	for i in 4:
-		var stripe := PS1Assets.flat(Color(0.75, 0.15, 0.12) if i % 2 == 0 else Color(0.9, 0.85, 0.7))
-		_box(self, Vector3(0.7, 0.08, 1.5), stall + Vector3(-1.05 + i * 0.7, 2.05, 0), stripe)
-	for i in 5:
-		var produce := PS1Assets.flat([Color(0.8, 0.2, 0.1), Color(0.9, 0.7, 0.2), Color(0.4, 0.6, 0.2)][i % 3])
-		_box(self, Vector3(0.25, 0.2, 0.25), stall + Vector3(-1.0 + i * 0.5, 1.0, 0), produce)
-	_solid(Vector3(2.6, 0.9, 1.2), stall + Vector3(0, 0.45, 0))
-	_feature(stall, Vector2(2.6, 1.2), Color(0.7, 0.25, 0.2))
+	# Mercado: puestos del kit con su género alrededor de la plaza.
+	# Los puestos abren hacia +Z: los del norte miran ya a la plaza.
+	_stall("market_stall_red", Vector3(-4.6, 0, -4.0), 0.0)
+	_stall("market_stall_blue", Vector3(4.4, 0, -4.0), 0.0)
+	_stall("market_stall_round_yellow", Vector3(-4.2, 0, 3.8), 0.0)
+	var goods := [
+		["crate_apples", Vector3(-6.1, 0, -4.4), 0.0], ["basket_tomatoes", Vector3(-3.2, 0, -4.4), 0.0],
+		["barrel_apples", Vector3(-7.4, 0, -2.4), 0.0], ["jutesack_closed", Vector3(-1.9, 0, -2.6), 0.6],
+		["crate_onions_angled", Vector3(3.0, 0, -4.4), 0.0], ["basket_potatoes", Vector3(5.8, 0, -4.4), 0.4],
+		["barrel_beans", Vector3(7.0, 0, -2.4), 0.0], ["pumpkin", Vector3(4.4, 0, -4.6), 0.0],
+		["terracotta_vase", Vector3(-6.0, 0, 3.2), 0.0], ["basket_eggplants", Vector3(-2.3, 0, 3.0), 0.0],
+		["crate_potatoes", Vector3(-6.2, 0, 4.4), 1.2],
+	]
+	for g: Array in goods:
+		Kit.place_solid(self, g[0], g[1], g[2])
 
-	# Barriles junto a la forja
-	var barrel := CylinderMesh.new()
-	barrel.top_radius = 0.32
-	barrel.bottom_radius = 0.32
-	barrel.height = 0.8
-	barrel.radial_segments = 7
-	barrel.rings = 1
-	for pos: Vector3 in [Vector3(9.9, 0.4, 4.6), Vector3(9.2, 0.4, 4.9), Vector3(9.6, 1.2, 4.75)]:
-		_mesh(self, barrel, pos, wood)
-	_solid(Vector3(1.4, 1.2, 0.8), Vector3(9.55, 0.6, 4.75))
+	# Barriles y cajas junto a la forja
+	for b: Array in [["barrel", Vector3(9.7, 0, 4.7)], ["barrel_open", Vector3(9.4, 0, 3.7)], ["crate_angled", Vector3(9.8, 0, -3.6)]]:
+		Kit.place_solid(self, b[0], b[1])
 
 	# Carro con heno junto a la puerta sur
 	var cart := Vector3(5.0, 0, 13.5)
@@ -404,15 +416,19 @@ func _build_props() -> void:
 	_feature(cart, Vector2(1.6, 2.6), Color(0.6, 0.5, 0.25))
 
 	# Balas de heno
-	var bale := CylinderMesh.new()
-	bale.top_radius = 0.55
-	bale.bottom_radius = 0.55
-	bale.height = 1.0
-	bale.radial_segments = 8
-	bale.rings = 1
-	for pos: Vector3 in [Vector3(-15.5, 0.55, 9.5), Vector3(-14.4, 0.55, 10.2), Vector3(16.0, 0.55, 1.5)]:
-		_mesh(self, bale, pos, thatch, Vector3(0, 0, PI / 2))
-		_solid(Vector3(1.0, 1.1, 1.1), pos)
+	for h: Array in [["haybale", Vector3(16.0, 0, 1.5), 0.4], ["haybale_dry", Vector3(15.6, 0, 7.6), 1.4]]:
+		Kit.place_solid(self, h[0], h[1], h[2])
+
+
+## Puesto de mercado del kit centrado en `center` (su origen está en una esquina).
+func _stall(piece: String, center: Vector3, rot_y: float) -> void:
+	var box := Kit.aabb(piece)
+	var offset := Vector3(box.get_center().x, 0, box.get_center().z)
+	var node := Kit.place(self, piece, center - offset.rotated(Vector3.UP, rot_y), rot_y)
+	# Solo la lona del fondo es sólida: se puede entrar a hablar con el tendero.
+	var back := Vector3(0, 1.0, -box.size.z * 0.45).rotated(Vector3.UP, rot_y)
+	_solid(Vector3(box.size.x * 0.9, 2.0, 0.3), center + back, rot_y)
+	_feature(center, Vector2(box.size.x, box.size.z), Color(0.7, 0.25, 0.2), rot_y)
 
 
 func _build_trees() -> void:
@@ -479,7 +495,7 @@ func _build_villagers() -> void:
 		"Ve al muñeco de paja de ahí al lado y dale unos buenos tajos.",
 		"Clic izquierdo para golpear, clic derecho para cubrirte. Si te cubres justo a tiempo, desarmas al rival.",
 	])
-	_villager("Theresa", Vector3(-2.4, 0, 2.6), PI * 0.85, {
+	_villager("Theresa", Vector3(-1.2, 0, 2.2), PI * 0.85, {
 		"model": "res://assets/characters/Character_34_Female.fbx", "outfit": "aldeana",
 	}, {}, [
 		"Buenos días, Henry. Qué mañana tan tranquila, ¿verdad?",
@@ -507,7 +523,7 @@ func _build_villagers() -> void:
 		"¿Qué miras, chaval? ¿Nunca has visto a un hombre descansar?",
 		"Si ves a mi mujer, yo no estoy aquí.",
 	])
-	_villager("Ludmila", Vector3(-5.9, 0, -2.0), PI / 2, {
+	_villager("Ludmila", Vector3(-4.6, 0, -5.0), 0.0, {
 		"model": "res://assets/characters/Character_36_Female.fbx", "outfit": "mercadera",
 	}, {"shop": "mercado", "profession": "comerciante"}, ["¡Pan, huevos, cerveza! ¡Lo mejor de Skalitz!"])
 	_villager("Pešek", _on_ground(34.6, -7.5), PI / 2, {

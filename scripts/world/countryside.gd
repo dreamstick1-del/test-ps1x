@@ -238,6 +238,9 @@ func _build_mill() -> void:
 		var spoke := w._box(wheel, Vector3(0.1, 0.08, 1.5), Vector3(0, sin(a) * 0.75, cos(a) * 0.75), wood)
 		spoke.rotation.x = -a
 	w.spinners.append({"node": wheel, "speed": 0.9})
+	for sack: Array in [["jutesack_closed", Vector2(34.4, -6.6), 0.3], ["jutesack_closed_alt", Vector2(35.2, -6.2), 1.2],
+			["jutesack_open", Vector2(34.0, -5.6), 0.0], ["barrel_open", Vector2(36.4, -6.4), 0.0]]:
+		Kit.place_solid(w, sack[0], ground(sack[1].x, sack[1].y), sack[2])
 	w.add_location("MOLINO DEL RÍO", Vector3(37, -2, -10), Vector3(10, 10, 12))
 
 
@@ -272,6 +275,9 @@ func _build_fields() -> void:
 		mmi.material_override = PS1Assets.vertex_colored("", Vector2.ONE, false)
 		w.add_child(mmi)
 		w.map_features.append({"pos": f.get_center(), "size": f.size, "rot": 0.0, "color": Color(0.75, 0.65, 0.3)})
+	for bale: Array in [["haybale_wrapped", Vector2(29.0, -14.0), 1.5], ["haybale", Vector2(29.0, 8.0), 0.2],
+			["haybale_wrapped_dry", Vector2(-17.5, 39.5), 0.8]]:
+		Kit.place_solid(w, bale[0], ground(bale[1].x, bale[1].y), bale[2])
 	w.add_location("CAMPOS DE TRIGO", Vector3(24, -2, 0), Vector3(9, 10, 40))
 	w.add_location("CAMPOS DE TRIGO", Vector3(-25, -2, 38.5), Vector3(14, 10, 11))
 
@@ -409,16 +415,10 @@ func _build_farm() -> void:
 	w._house(ground(-22, 28), 5.0, 4.0, 2.9, 0.0, "thatch", Color(0.6, 0.45, 0.3))
 	w._house(ground(-28, 24), 6.0, 5.0, 3.6, PI / 2, "shingle", Color(0.55, 0.35, 0.3))
 	_fence(Rect2(-17, 31, 6, 5), [Vector2(-14, 31)])
-	var thatch := PS1Assets.material("thatch", Color.WHITE, Vector2(1, 1))
-	var stack := CylinderMesh.new()
-	stack.top_radius = 0.2
-	stack.bottom_radius = 1.4
-	stack.height = 2.4
-	stack.radial_segments = 7
-	stack.rings = 1
-	var p := ground(-25, 31)
-	w._mesh(w, stack, p + Vector3(0, 1.1, 0), thatch)
-	w._cylinder_solid(1.3, 2.4, p + Vector3(0, 1.1, 0))
+	Kit.place_solid(w, "hay_covered", ground(-25, 31), 0.3)
+	for b: Array in [["haybale_wrapped", Vector2(-28.5, 34.5), 0.2], ["haybale_dry", Vector2(-26.8, 35.6), 1.1],
+			["barrel", Vector2(-19.2, 26.2), 0.0], ["jutesack_closed_alt", Vector2(-20.1, 26.0), 0.5]]:
+		Kit.place_solid(w, b[0], ground(b[1].x, b[1].y), b[2])
 	w.add_location("GRANJA", Vector3(-22, -2, 31), Vector3(20, 10, 18))
 
 
