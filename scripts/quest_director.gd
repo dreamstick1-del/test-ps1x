@@ -56,6 +56,7 @@ func _enter(stage: int) -> void:
 		4:
 			GameManager.set_objective("¡Bandidos! Defiende Skalitz.")
 			GameManager.show_message("¡BANDIDOS EN LA PUERTA!", Color(1.0, 0.35, 0.25), 2.5)
+			Economy.raid_event()
 			_spawn_wave(0)
 		5:
 			GameManager.set_objective("¡Acaba con su cabecilla!")
@@ -64,7 +65,10 @@ func _enter(stage: int) -> void:
 		6:
 			GameManager.set_objective("Skalitz está a salvo... por ahora.")
 			GameManager.show_message("¡VICTORIA!", Color(1.0, 0.85, 0.3), 3.0)
-			GameManager.show_subtitle("Los bandidos huyen. Pero algo más grande se acerca por el camino del sur...", 6.0)
+			Economy.raid_repelled()
+			Economy.money += 40
+			Economy.player_changed.emit()
+			GameManager.show_subtitle("Sir Radzig te recompensa con 40 groschen. Ahora Skalitz es tuyo: comercia, caza, trabaja en la mina... (I: diario)", 8.0)
 
 
 func _on_dialog_finished() -> void:

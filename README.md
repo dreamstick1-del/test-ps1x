@@ -1,93 +1,122 @@
-# Skalitz 1403 — Diorama PS1 (Godot 4.3+)
+# Skalitz 1403 — Diorama PS1 en primera persona (Godot 4.3+)
 
-Aventura low-poly estilo PlayStation 1 que se juega **dentro de una maqueta**: el pueblo
-bohemio de Skalitz montado sobre una peana de madera, renderizado a 320x240 con jitter
-de vértices, texturas afines, color de 15 bits con dithering y marco de televisor CRT.
+RPG medieval en primera persona al estilo **King's Field** (PS1) que se juega **dentro de
+una maqueta**: el menú muestra el diorama de Skalitz girando sobre una mesa y, al empezar,
+la cámara se mete en los ojos de Henry. Se renderiza a 320x240 con temblor de vértices,
+texturas afines, color de 15 bits con dithering y marco de televisor CRT.
 
 Abre la carpeta con Godot 4.3 o superior y pulsa F5. No hacen falta plugins.
 
 ## Controles
 
-| Acción | Teclado | Mando |
+| Acción | Teclado / ratón | Mando |
 |---|---|---|
-| Avanzar / retroceder | W / S, ↑ / ↓ | Cruceta / stick |
-| Girar (control tanque) | A / D, ← / → | Cruceta / stick |
-| Correr | Shift | B / Círculo |
-| Hablar / avanzar diálogo / saltar intro | E, Espacio | A / Cruz |
+| Mirar | Ratón (←/→ girar, RePág/AvPág) | Stick derecho |
+| Moverse | WASD / ↑↓ | Stick izquierdo |
+| Correr | Shift | L3 |
+| Atacar (combo de 3) | Clic izquierdo / J | X / Cuadrado |
+| Bloquear / parada | Clic derecho / K | LB / L1 |
+| Habilidades activas | 1, 2, 3 | Y, RB, B |
+| Hablar / comerciar / picar | E, Espacio | A / Cruz |
+| Menú de habilidades | Tab, C | Back / Select |
+| Diario (inventario, sociedad, mercado) | I, L | — |
 | Pausa | Esc, P | Start |
 
-## Flujo del juego
-
-`MENU` (el diorama gira, "PULSA START") → **Juego Nuevo** → `CUTSCENE` (intro con
-subtítulos; se puede saltar) → `PLAYING` (planos fijos por zona) ⇄ `DIALOG` (aldeanos) ⇄ `PAUSED`.
-
-El autoload `GameManager` guarda el estado y hace de bus de señales entre el mundo 3D
-y la interfaz, que viven en SubViewports separados.
-
-## Estructura
+## El mapa (96x96 m)
 
 ```
-MainDioramaScene (scenes/main_diorama.tscn)
-├─ GameView  SubViewportContainer (shrink 3 → 320x240, shader ps1_post: 15 bits + Bayer)
-│  └─ SubViewport
-│     └─ DioramaWorld   scripts/diorama_world.gd (pueblo generado por código)
-│        ├─ Camera3D    scripts/diorama_camera.gd (órbita / cinemática / planos fijos + DOF miniatura)
-│        └─ Player_Henry scenes/player_henry.tscn (control tanque, estamina)
-├─ UIView    SubViewportContainer (320x240, process ALWAYS)
-│  └─ UIRoot: HUD_Overlay (vida, aguante, minimapa, subtítulos), DialogBox, MainMenu, PauseMenu, Fade
-└─ CRTOverlay (scanlines, viñeta, esquinas, a resolución nativa)
+  BOSQUE DE LOS LOBOS     CASTILLO DE SKALITZ (colina)        BOSQUE (ciervos)
+  MINA DE PLATA (colina)  [ SKALITZ amurallado ]  campos de trigo | RÍO | PASTOS
+                          [ forja, iglesia, plaza ]   puente ----- | ~~~ | MOLINO
+  CARBONERAS     GRANJA (cerdos, gallinas)     camino del sur
 ```
 
-| Archivo | Qué hace |
+El pueblo (forja, iglesia, mercado, pozo, casas de entramado) está en el centro. El campo lo
+genera `scripts/world/countryside.gd`: terreno con colinas, cauce del río y caminos (con
+colisión), puente, molino con rueda hidráulica, trigales (MultiMesh), pastos vallados,
+castillo con torre y muralla, mina con vagoneta y vetas de plata, granja y carboneras con humo.
+
+Hay **ciclo de día y noche** (1 hora de juego = 15 s): el sol, la luz y el cielo cambian, y
+las tiendas cierran por la noche.
+
+## Combate (`scripts/combat/`)
+
+- **Combo ligero**: tajo derecha → tajo izquierda → estocada (más daño y alcance).
+- **Bloqueo**: absorbe gran parte del daño gastando aguante. Si te quedas sin aguante, te rompen la guardia.
+- **Parada**: si levantas la guardia justo antes del golpe, no recibes daño y el enemigo queda aturdido.
+- Los bandidos avisan de su ataque (brazo arriba y destello amarillo) y golpean a los 0,5 s.
+- Hit-stop, temblor de cámara, partículas y destello rojo al recibir daño.
+- La espada en primera persona se anima con poses a 15 fps, entrecortada como en PS1.
+
+## Habilidades (`autoload/skills.gd`, Tab)
+
+Experiencia por combatir, cazar y hacer paradas; cada nivel da un punto.
+
+| Pasivas (3 rangos) | Activas |
 |---|---|
-| `autoload/game_manager.gd` | Estados, Input Map (se registra solo), diálogos, opciones gráficas |
-| `shaders/ps1_spatial.gdshader` | Vertex snapping, mapeado afín, Nearest, UV en espacio mundo |
-| `shaders/ps1_post.gdshader` | Reducción a 15 bits con dithering Bayer 4x4 |
-| `shaders/crt_overlay.gdshader` | Marco de televisor |
-| `scripts/ps1_assets.gd` | Texturas procedurales 32x32 y materiales PS1 |
-| `scripts/camera_zone.gd` | Zonas de cámara fija (corte seco al entrar) |
-| `scripts/villager.gd` | Aldeanos con diálogo |
-| `scripts/ps1_rigged_character.gd` | Personajes FBX (rig Mixamo) con animaciones PS1 |
-| `scripts/ps1_character.gd` | Personaje de cajas (fallback sin modelo) |
-| `scripts/character_repaint.gd` | Repintado medieval automático de texturas |
+| Fuerza: +15% daño | [1] Golpe Poderoso: daño x2,5 y derriba |
+| Vitalidad: +25 vida | [2] Torbellino: giro de 360° (requiere Fuerza 1) |
+| Aguante: +20 aguante y más recuperación | [3] Oración: +40 vida (requiere Vitalidad 1) |
+| Defensa: mejor bloqueo y paradas más fáciles | |
 
-Las opciones del menú permiten activar/desactivar CRT, dithering, temblor de vértices y
-texturas afines (usan los uniformes globales `ps1_vertex_snap` y `ps1_affine`).
+## Economía y sociedad (`autoload/economy.gd`)
 
-## Personajes y repintado medieval
+- **Mercado de oferta y demanda**: 12 bienes (trigo, harina, pan, carne, huevos, leche,
+  cerveza, lana, pieles, carbón, plata, herramientas). Su precio sube o baja según las existencias.
+- **Cadenas de producción**: trigo → harina (molino) → pan (panadero); trigo → cerveza;
+  carbón → herramientas (herrería). Sin herramientas, todo el pueblo trabaja peor.
+- **Sociedad**: unos 80 habitantes en 19 hogares, cada uno con oficio, clase social
+  (siervos, mineros, artesanos, burgueses, clero, guardia), riqueza y satisfacción.
+  Cada día producen, venden y compran lo que necesitan. Si no les llega, pasan hambre.
+- **Impuestos**: cada 7 días se paga un 10% a Sir Radzig y un 5% de diezmo a la iglesia.
+- **Sucesos**: buenas y malas cosechas, vetas de plata, lobos, mercaderes de Praga y el
+  asalto de los bandidos (que vacía las despensas y dispara los precios).
+- **Henry**: tiene groschen, inventario, equipo (espada de acero, gambesón) y reputación,
+  que mejora los precios. Matar ganado ajeno baja la reputación.
+- **Tiendas**: Ludmila (mercado), Martin (herrería y equipo) y Pešek (molino).
+- **Ganarse la vida**: picar plata en la mina, cazar ciervos y conejos (carne y pieles) y venderlo.
+- Los aldeanos comentan lo que pasa en el pueblo: precios, hambre, seguridad o tu reputación.
+- **Diario (I)**: inventario (comer y beber cura), sociedad por clases, tabla de precios
+  con tendencias, y crónica de sucesos.
 
-`assets/characters/Character_01..05.fbx` son modelos PSX con rig Mixamo. Traen solo una
-pose, así que las animaciones (`idle`, `walk`, `run`, `talk`) se generan por código sobre
-los huesos con interpolación **NEAREST**: el movimiento salta de pose en pose, como en PS1.
+## Animales (`scripts/world/animal.gd`)
 
-| Modelo | Personaje | Atuendo |
-|---|---|---|
-| Character_01 | Henry (jugador) | `henry`: túnica roja, camisa de lino, calzas, botas |
-| Character_02 | Martin, el herrero | `herrero`: delantal de cuero, barba |
-| Character_03 | Padre Ondřej | `cura`: hábito negro con capucha |
-| Character_04 | Guardia de la puerta | `guardia`: cota de malla, tabardo con cruz |
-| Character_05 | Kuneš, campesino | `campesino`: túnica verde y capucha |
+Gallinas, cerdos, ovejas, vacas, perros (te siguen), ciervos y conejos (huyen; se cazan) y
+lobos (atacan). Pastan, deambulan y animan las patas a saltos.
 
-`CharacterRepaint` rasteriza cada triángulo en el espacio UV y pinta cada píxel según la
-región del cuerpo (hueso dominante) y su posición 3D: cinturón, bajo de la túnica, escote,
-puños, ojos, pelo, capucha, cruz del tabardo... El resultado es una textura de 128x128 con
-color de 15 bits.
+## Misión de introducción
 
-Para regenerar las texturas:
+Habla con Martin → entrena con el muñeco de paja → aprende una habilidad → habla con el
+guardia → dos oleadas de bandidos, con cabecilla incluido. Después, el mundo queda libre. Si
+mueres, vuelves a intentarlo sin perder ni el nivel ni el dinero.
+
+## Personajes y texturas
+
+`assets/characters/Character_01..05.fbx` son personajes PSX con rig Mixamo, animados por
+código (idle, walk, run, talk, attack, hit) con interpolación NEAREST.
+`tools/repaint_characters.gd` genera las texturas de cada atuendo (Henry, herrero, cura,
+guardia, campesino, bandido, cabecilla, molinero, minero, pastor):
 
 ```bash
 godot --headless --path . -s tools/repaint_characters.gd
 ```
 
-**Con las texturas originales:** copia `Character_0X.png` junto a los FBX
-(`assets/characters/`) y vuelve a ejecutar la herramienta. Así se conservan las caras
-originales y la ropa se re-tiñe con su luminancia, de modo que se mantienen los pliegues
-de la tela. Para retocar a mano, edita los PNG de `assets/characters/textures/`. Los
-atuendos (colores, `robe`, `mail`, `tabard`, `apron`, `hood`, `beard`) se definen en
-`CharacterRepaint.OUTFITS`.
+**Para conservar las caras originales**, copia las texturas originales `Character_0X.png`
+junto a los FBX (`assets/characters/`) y vuelve a ejecutar la herramienta. Mantiene la
+cabeza original y solo re-tiñe la ropa con los colores medievales, conservando los pliegues
+de la tela. Sin esos PNG, las caras se pintan proceduralmente.
 
-## Siguientes pasos sugeridos
+## Estructura
 
-- Sonido: ambiente del pueblo, martillo de la forja, pasos con pitch aleatorio.
-- Misiones simples (recoger carbón para Martin) usando el mismo sistema de diálogos.
-- La cutscene del ataque a Skalitz: humo, fuego y cámara temblando sobre el diorama.
+| Archivo | Qué hace |
+|---|---|
+| `autoload/game_manager.gd` | Estados (MENU, PLAYING, DIALOG, CUTSCENE, PAUSED, SKILLS, TRADE, JOURNAL, DEAD), input, señales |
+| `autoload/skills.gd` | Experiencia, niveles y árbol de habilidades |
+| `autoload/economy.gd` | Reloj, mercado, hogares, impuestos, sucesos, inventario de Henry |
+| `scripts/main_diorama.gd` | Flujo menú → intro → primera persona, reintentar |
+| `scripts/diorama_world.gd` | Pueblo, aldeanos, animales, día/noche |
+| `scripts/world/countryside.gd` | Terreno, río, molino, campos, castillo, mina, bosques |
+| `scripts/player_henry.gd` | Controlador en primera persona |
+| `scripts/combat/*` | Combate, espada en primera persona, bandidos, muñeco, efectos |
+| `scripts/ui/*` | HUD, minimapa, menús (habilidades, comercio, diario, pausa) |
+| `shaders/*` | PS1 (jitter + afín + vertex color), viewmodel, post-proceso 15 bits, CRT |

@@ -142,8 +142,12 @@ func _update_interaction() -> void:
 			GameManager.clear_interactable(GameManager.interactable)
 
 
-## Gira la vista hacia la cara del aldeano y empieza el diálogo.
+## Gira la vista hacia la cara del aldeano y empieza el diálogo
+## (con objetos, como las vetas de mineral, solo interactúa).
 func _talk_to(villager: Node3D) -> void:
+	if not villager is Villager:
+		villager.interact(self)
+		return
 	var face := villager.global_position + Vector3(0, 1.6, 0)
 	var d := face - camera.global_position
 	var target_yaw := atan2(-d.x, -d.z)

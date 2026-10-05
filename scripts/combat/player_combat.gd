@@ -174,7 +174,7 @@ func _resolve_hit(params: Dictionary) -> void:
 			continue
 		var dir := to / dist if dist > 0.05 else fwd
 		target.receive_hit({
-			"damage": params.damage * Skills.damage_multiplier(),
+			"damage": params.damage * Skills.damage_multiplier() * Economy.weapon_damage(),
 			"stagger": params.stagger,
 			"knockback": dir * params.knockback,
 			"heavy": params.get("heavy", false),
@@ -199,7 +199,7 @@ func receive_hit(hit: Dictionary) -> void:
 	to_attacker.y = 0.0
 	var fwd := -_player.global_transform.basis.z
 	var facing := fwd.dot(to_attacker.normalized()) > 0.25
-	var damage: float = hit.damage
+	var damage: float = hit.damage * (1.0 - Economy.armor_reduction())
 
 	if is_blocking and facing:
 		var since := (Time.get_ticks_msec() - _block_started_ms) / 1000.0

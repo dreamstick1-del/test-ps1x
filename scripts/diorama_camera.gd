@@ -7,9 +7,9 @@ extends Camera3D
 
 enum Mode { ORBIT, CINEMATIC }
 
-@export var orbit_center := Vector3(0, -1.0, 0)
-@export var orbit_radius := 44.0
-@export var orbit_height := 28.0
+@export var orbit_center := Vector3(0, -2.0, 0)
+@export var orbit_radius := 112.0
+@export var orbit_height := 72.0
 @export var orbit_speed := 0.10 ## Radianes por segundo.
 
 var mode: Mode = Mode.ORBIT
@@ -23,10 +23,10 @@ func _ready() -> void:
 	attributes = _attributes
 	_attributes.dof_blur_far_enabled = true
 	_attributes.dof_blur_near_enabled = true
-	_attributes.dof_blur_far_distance = 58.0
-	_attributes.dof_blur_far_transition = 20.0
-	_attributes.dof_blur_near_distance = 30.0
-	_attributes.dof_blur_near_transition = 12.0
+	_attributes.dof_blur_far_distance = 150.0
+	_attributes.dof_blur_far_transition = 40.0
+	_attributes.dof_blur_near_distance = 80.0
+	_attributes.dof_blur_near_transition = 30.0
 	_attributes.dof_blur_amount = 0.12
 
 

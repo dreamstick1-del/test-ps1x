@@ -1,11 +1,11 @@
 extends Node
 ## Autoload "GameManager".
 ## Controla el estado global del juego (MENU, PLAYING, DIALOG, CUTSCENE, PAUSED,
-## SKILLS, DEAD),
+## SKILLS, DEAD, TRADE, JOURNAL),
 ## registra el mapa de controles y hace de "bus" de señales entre el mundo 3D
 ## del diorama y la interfaz 2D, que viven en SubViewports distintos.
 
-enum GameState { MENU, PLAYING, DIALOG, CUTSCENE, PAUSED, SKILLS, DEAD }
+enum GameState { MENU, PLAYING, DIALOG, CUTSCENE, PAUSED, SKILLS, DEAD, TRADE, JOURNAL }
 
 signal state_changed(new_state: GameState, old_state: GameState)
 signal dialog_started(speaker: String, lines: PackedStringArray)
@@ -20,6 +20,7 @@ signal objective_changed(text: String)
 signal enemy_focused(enemy: Node)
 signal screen_flash(color: Color)
 signal player_died
+signal trade_opened(shop: String, merchant: String)
 
 ## Teclas, ratón y mando por acción. Se registran en tiempo de ejecución
 ## para que el proyecto funcione sin tocar el Input Map del editor.
@@ -40,6 +41,7 @@ const KEY_BINDINGS := {
 	"skill_2": [KEY_2],
 	"skill_3": [KEY_3],
 	"habilidades": [KEY_TAB, KEY_C],
+	"diario": [KEY_I, KEY_L],
 	"pausa": [KEY_ESCAPE, KEY_P],
 }
 const MOUSE_BINDINGS := {
@@ -57,6 +59,9 @@ const JOY_BINDINGS := {
 	"habilidades": JOY_BUTTON_BACK,
 	"pausa": JOY_BUTTON_START,
 }
+## Estados con menú abierto: pausan el mundo y sueltan el ratón.
+const MENU_STATES := [GameState.PAUSED, GameState.SKILLS, GameState.TRADE, GameState.JOURNAL]
+
 ## Sticks: [eje, dirección]. Izquierdo = moverse, derecho = mirar.
 const JOY_AXES := {
 	"adelante": [JOY_AXIS_LEFT_Y, -1.0],
@@ -101,13 +106,19 @@ func _process(_delta: float) -> void:
 			pause_game()
 		elif current_state == GameState.PAUSED:
 			resume_game()
-		elif current_state == GameState.SKILLS:
+		elif current_state in [GameState.SKILLS, GameState.TRADE, GameState.JOURNAL]:
 			change_state(GameState.PLAYING)
 	elif Input.is_action_just_pressed("habilidades"):
-		if current_state == GameState.PLAYING:
-			change_state(GameState.SKILLS)
-		elif current_state == GameState.SKILLS:
-			change_state(GameState.PLAYING)
+		_toggle_menu(GameState.SKILLS)
+	elif Input.is_action_just_pressed("diario"):
+		_toggle_menu(GameState.JOURNAL)
+
+
+func _toggle_menu(menu: GameState) -> void:
+	if current_state == GameState.PLAYING:
+		change_state(menu)
+	elif current_state == menu:
+		change_state(GameState.PLAYING)
 
 
 # --- Estados -----------------------------------------------------------------
@@ -117,7 +128,7 @@ func change_state(new_state: GameState) -> void:
 		return
 	var old_state := current_state
 	current_state = new_state
-	get_tree().paused = new_state in [GameState.PAUSED, GameState.SKILLS]
+	get_tree().paused = new_state in MENU_STATES
 	# En primera persona el ratón se captura solo mientras se juega.
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if new_state == GameState.PLAYING \
 		else Input.MOUSE_MODE_VISIBLE
@@ -161,6 +172,18 @@ func end_dialog() -> void:
 	_interact_blocked_until_ms = Time.get_ticks_msec() + 300
 	change_state(GameState.PLAYING)
 	dialog_finished.emit()
+
+
+func open_trade(shop: String, merchant: String) -> void:
+	if current_state != GameState.PLAYING:
+		return
+	change_state(GameState.TRADE)
+	trade_opened.emit(shop, merchant)
+
+
+func close_trade() -> void:
+	_interact_blocked_until_ms = Time.get_ticks_msec() + 300
+	change_state(GameState.PLAYING)
 
 
 func can_interact() -> bool:

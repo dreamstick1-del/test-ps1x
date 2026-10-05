@@ -15,6 +15,8 @@ uniform sampler2D albedo_texture : source_color, filter_nearest, repeat_enable, 
 uniform vec2 uv_scale = vec2(1.0);
 uniform bool world_uv = false;
 uniform float emission_strength = 0.0;
+// Multiplica por el color de vértice / de instancia (terreno, MultiMesh).
+uniform bool use_vertex_color = false;
 // Rejilla de snapping (en "píxeles" de media resolución: 320x240 -> 160x120).
 uniform vec2 snap_resolution = vec2(160.0, 120.0);
 
@@ -53,5 +55,8 @@ void fragment() {
 	vec2 uv = mix(UV, affine_uv, clamp(ps1_affine, 0.0, 1.0));
 	vec3 tex = texture(albedo_texture, uv).rgb;
 	ALBEDO = albedo.rgb * tex;
+	if (use_vertex_color) {
+		ALBEDO *= COLOR.rgb;
+	}
 	EMISSION = ALBEDO * emission_strength;
 }

@@ -62,6 +62,27 @@ const OUTFITS := {
 		"mail": true, "tabard": Color(0.12, 0.12, 0.13), "cross": false,
 		"hood": Color(0.40, 0.08, 0.06), "beard": Color(0.10, 0.08, 0.07),
 	},
+	"molinero": {
+		"skin": Color(0.86, 0.68, 0.55), "hair": Color(0.6, 0.55, 0.5),
+		"tunic": Color(0.85, 0.82, 0.74), "trim": Color(0.6, 0.55, 0.45),
+		"sleeve": Color(0.88, 0.85, 0.78), "hose": Color(0.45, 0.4, 0.33),
+		"boots": Color(0.25, 0.17, 0.1), "belt": Color(0.4, 0.3, 0.18),
+		"apron": Color(0.95, 0.94, 0.9), "beard": Color(0.6, 0.55, 0.5),
+	},
+	"minero": {
+		"skin": Color(0.62, 0.5, 0.42), "hair": Color(0.12, 0.1, 0.09),
+		"tunic": Color(0.3, 0.3, 0.32), "trim": Color(0.2, 0.2, 0.2),
+		"sleeve": Color(0.36, 0.34, 0.33), "hose": Color(0.22, 0.2, 0.18),
+		"boots": Color(0.12, 0.09, 0.07), "belt": Color(0.3, 0.2, 0.1),
+		"apron": Color(0.25, 0.17, 0.1), "hood": Color(0.85, 0.85, 0.82), "beard": Color(0.12, 0.1, 0.09),
+	},
+	"pastor": {
+		"skin": Color(0.8, 0.6, 0.46), "hair": Color(0.5, 0.35, 0.2),
+		"tunic": Color(0.6, 0.5, 0.36), "trim": Color(0.45, 0.35, 0.22),
+		"sleeve": Color(0.85, 0.82, 0.7), "hose": Color(0.35, 0.3, 0.22),
+		"boots": Color(0.22, 0.15, 0.09), "belt": Color(0.3, 0.22, 0.12),
+		"hood": Color(0.3, 0.42, 0.28), "beard": Color(0.5, 0.35, 0.2),
+	},
 	"campesino": {
 		"skin": Color(0.78, 0.56, 0.42), "hair": Color(0.45, 0.30, 0.15),
 		"tunic": Color(0.38, 0.45, 0.25), "trim": Color(0.30, 0.35, 0.18),

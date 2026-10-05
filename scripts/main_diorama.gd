@@ -97,8 +97,9 @@ func _enter_gameplay() -> void:
 func _play_intro() -> void:
 	var henry := player.global_position
 	var shots := [
-		[Vector3(-24, 18, 26), Vector3(0, 0, 0), 4.5, "Bohemia, año del Señor de 1403."],
-		[Vector3(0, 9, 4), Vector3(0, 5, -15), 4.5, "Skalitz. Un pequeño pueblo minero de plata."],
+		[Vector3(-60, 40, 62), Vector3(0, 0, 0), 4.5, "Bohemia, año del Señor de 1403."],
+		[Vector3(-20, 9, -10), Vector3(-38, 3, -4), 4.0, "Skalitz. Un pequeño pueblo que vive de sus minas de plata..."],
+		[Vector3(8, 6, -14), Vector3(0, 8, -37), 4.0, "...bajo la protección de Sir Radzig Kobyla."],
 		[Vector3(3, 6, 12), Vector3(11, 1, 1), 4.5, "Allí vivía Henry, el hijo de Martin el herrero."],
 		[henry + Vector3(-2.5, 2.2, 2.5), henry + Vector3(0, 1.3, 0), 3.0,
 			"Para él, aquel iba a ser un día cualquiera..."],

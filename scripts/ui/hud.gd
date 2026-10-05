@@ -138,6 +138,8 @@ func _draw_gameplay() -> void:
 		Color(0.35, 0.6, 0.95), font)
 	if Skills.points > 0:
 		_text(Vector2(112, 35), "+%d" % Skills.points, PS1Theme.ACCENT, font)
+	_text(Vector2(250, 72), Economy.clock_text(), PS1Theme.TEXT, font)
+	_text(Vector2(250, 82), "%d groschen" % Economy.money, Color(0.95, 0.8, 0.4), font)
 
 	if GameManager.is_playing():
 		# Punto de mira: dorado si hay algo con lo que interactuar.

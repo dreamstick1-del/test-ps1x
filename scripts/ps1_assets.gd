@@ -46,6 +46,13 @@ static func textured(tex: Texture2D, tint := Color.WHITE) -> ShaderMaterial:
 	return mat
 
 
+## Material que además multiplica por el color de vértice o de instancia.
+static func vertex_colored(tex_name: String, uv_scale := Vector2(0.5, 0.5), world_uv := true) -> ShaderMaterial:
+	var mat := material(tex_name, Color.WHITE, uv_scale, world_uv).duplicate() as ShaderMaterial
+	mat.set_shader_parameter("use_vertex_color", true)
+	return mat
+
+
 ## Material del arma en primera persona (sin test de profundidad).
 static func viewmodel(color: Color) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
