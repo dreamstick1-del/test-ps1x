@@ -618,6 +618,9 @@ func _build_gardens() -> void:
 			purple.append(point)
 		else:
 			hedges.append(point)
+		# Una segunda mata algo separada de la pared.
+		var side := Vector3(0.9, 0, 0.6).rotated(Vector3.UP, i * 1.7)
+		(hedges if i % 2 == 0 else purple).append({"pos": point.pos + side, "scale": 0.75})
 		i += 1
 	# Parterres en las esquinas de la plaza.
 	for c: Vector2 in [Vector2(-5.9, 5.9), Vector2(5.9, 5.9), Vector2(-5.9, -6.2), Vector2(5.9, -6.2)]:

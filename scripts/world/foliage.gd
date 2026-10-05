@@ -33,6 +33,7 @@ const KINDS := {
 	# Volúmenes con forma (VolumeFoliage): copa de nubes y pino de conos.
 	"copa_vol": {"size": Vector2.ONE, "tint": Color(1, 1, 1), "cards": 0, "texture": "hojas_vol", "builder": "crown"},
 	"pino_vol": {"size": Vector2.ONE, "tint": Color(1, 1, 1), "cards": 0, "texture": "agujas_vol", "builder": "pine"},
+	"flores": {"size": Vector2(0.75, 0.5), "tint": Color(1, 1, 1), "cards": 3, "texture": "morada", "top": true},
 	"ornamental": {"size": Vector2(1.35, 0.95), "tint": Color(1, 1, 1), "cards": 4, "texture": "morada", "top": true},
 }
 

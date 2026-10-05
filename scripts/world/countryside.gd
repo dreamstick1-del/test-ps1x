@@ -526,20 +526,23 @@ func _tree_spot_free(x: float, z: float) -> bool:
 func _build_forests() -> void:
 	# [centro, radio, cantidad] de cada bosque, más árboles sueltos por todo el mapa.
 	var forests := [
-		[Vector2(34, -36), 13.0, 70], [Vector2(-36, -38), 11.0, 55], [Vector2(-40, 26), 8.0, 25],
-		[Vector2(18, 36), 10.0, 30], [Vector2(-8, 40), 7.0, 14],
+		[Vector2(34, -36), 13.0, 125], [Vector2(-36, -38), 11.0, 100], [Vector2(-40, 26), 8.0, 45],
+		[Vector2(18, 36), 10.0, 55], [Vector2(-8, 40), 7.0, 26],
+		# Arboledas nuevas.
+		[Vector2(-20, -28), 6.0, 20], [Vector2(26, 25), 5.5, 16], [Vector2(-44, 8), 4.5, 10],
+		[Vector2(12, -28), 5.0, 14],
 	]
 	var spots: Array[Vector2] = []
 	for f: Array in forests:
 		for i in f[2] * 3:
-			if spots.size() > 600:
+			if spots.size() > 1100:
 				break
 			var a := rng.randf() * TAU
 			var r: float = sqrt(rng.randf()) * f[1]
 			var p: Vector2 = f[0] + Vector2(cos(a), sin(a)) * r
-			if _tree_spot_free(p.x, p.y) and _far_from(spots, p, 2.2):
+			if _tree_spot_free(p.x, p.y) and _far_from(spots, p, 1.9):
 				spots.append(p)
-	for i in 70:
+	for i in 180:
 		var p := Vector2(rng.randf_range(-HALF, HALF), rng.randf_range(-HALF, HALF))
 		if _tree_spot_free(p.x, p.y) and _far_from(spots, p, 3.0):
 			spots.append(p)
@@ -599,7 +602,8 @@ func _build_foliage() -> void:
 	var bushes := []
 	var tufts := []
 	var dry := []
-	for i in 1400:
+	var flowers := []
+	for i in 5000:
 		var x := r.randf_range(-HALF + 1.5, HALF - 1.5)
 		var zz := r.randf_range(-HALF + 1.5, HALF - 1.5)
 		if absf(x) < VILLAGE + 1.0 and absf(zz) < VILLAGE + 1.0:
@@ -620,12 +624,30 @@ func _build_foliage() -> void:
 			var d := Vector2(x, zz).distance_to(Vector2(f.x, f.y))
 			forest_edge = maxf(forest_edge, 1.0 - absf(d - f.z * 0.85) / 4.0)
 		var h := height(x, zz)
-		if forest_edge > 0.2 and r.randf() < 0.35:
+		var in_forest := false
+		for f: Vector3 in FOREST_FLOORS:
+			in_forest = in_forest or Vector2(x, zz).distance_to(Vector2(f.x, f.y)) < f.z * 0.8
+		if forest_edge > 0.2 and r.randf() < 0.45:
 			bushes.append({"pos": ground(x, zz), "scale": r.randf_range(0.8, 1.3)})
+		elif in_forest and r.randf() < 0.3:
+			# Sotobosque: matas y arbustos bajos entre los árboles.
+			if r.randf() < 0.5:
+				bushes.append({"pos": ground(x, zz), "scale": r.randf_range(0.6, 0.9)})
+			else:
+				tufts.append({"pos": ground(x, zz), "scale": r.randf_range(0.7, 1.1), "tint": Color(0.75, 0.85, 0.7)})
+		elif g.color.a < 0.45 and h < 2.0 and r.randf() < 0.14:
+			# Flores silvestres en los prados verdes: lilas, amarillas o blancas.
+			var tint: Color = [Color(1, 1, 1), Color(1.5, 1.35, 0.55), Color(1.4, 1.4, 1.35)][r.randi() % 3]
+			flowers.append({"pos": ground(x, zz), "scale": r.randf_range(0.6, 0.9), "tint": tint})
 		elif h > 2.0 and r.randf() < 0.25:
 			dry.append({"pos": ground(x, zz), "scale": r.randf_range(0.7, 1.1)})
-		elif r.randf() < 0.4:
+		elif r.randf() < 0.55:
 			tufts.append({"pos": ground(x, zz), "scale": r.randf_range(0.6, 1.0)})
+	# Hierba dentro de los pastos (sin tapar a las ovejas).
+	for i in 120:
+		var p := Vector2(r.randf_range(PASTURE.position.x + 0.5, PASTURE.end.x - 0.5), r.randf_range(PASTURE.position.y + 0.5, PASTURE.end.y - 0.5))
+		tufts.append({"pos": ground(p.x, p.y), "scale": r.randf_range(0.4, 0.7)})
+	Foliage.plant(w, "flores", flowers)
 	Foliage.plant(w, "arbusto", bushes)
 	Foliage.plant(w, "mata", tufts)
 	Foliage.plant(w, "seca", dry)
