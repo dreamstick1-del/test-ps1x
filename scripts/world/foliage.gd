@@ -1,10 +1,15 @@
 class_name Foliage
 extends RefCounted
-## Matas de hierba alta, juncos y arbustos hechos con tarjetas cruzadas
-## (3 planos en estrella con la textura recortada de la foto de hierba).
+## Matas de hierba alta, juncos, arbustos y plantas de jardín hechos con tarjetas
+## cruzadas (planos en estrella con una textura recortada de una foto).
+## Los arbustos de hojas llevan además una tarjeta horizontal arriba (copa).
 ## Todas las matas de un tipo van en un MultiMesh: una sola llamada de dibujo.
 
-const TEXTURE := "res://assets/textures/tallgrass_albedo.png"
+const TEXTURES := {
+	"hierba": "res://assets/textures/tallgrass_albedo.png",
+	"hojas": "res://assets/textures/shrub_albedo.png",
+	"morada": "res://assets/textures/purple_albedo.png",
+}
 
 ## Tipos: tamaño (ancho, alto), tinte y nº de tarjetas.
 const KINDS := {
@@ -13,10 +18,12 @@ const KINDS := {
 	"junco": {"size": Vector2(0.9, 1.7), "tint": Color(0.85, 0.95, 0.8), "cards": 3},
 	"seca": {"size": Vector2(1.0, 0.7), "tint": Color(1.45, 1.15, 0.6), "cards": 3},
 	"trigo": {"size": Vector2(0.8, 1.0), "tint": Color(1.7, 1.3, 0.45), "cards": 2},
-	"arbusto": {"size": Vector2(1.8, 1.3), "tint": Color(0.72, 0.85, 0.65), "cards": 5},
+	"arbusto": {"size": Vector2(1.7, 1.4), "tint": Color(0.8, 0.85, 0.75), "cards": 4, "texture": "hojas", "top": true},
+	"seto": {"size": Vector2(1.6, 1.15), "tint": Color(0.9, 0.95, 0.85), "cards": 4, "texture": "hojas", "top": true},
+	"ornamental": {"size": Vector2(1.35, 0.95), "tint": Color(1, 1, 1), "cards": 4, "texture": "morada", "top": true},
 }
 
-static var _material: ShaderMaterial
+static var _materials := {}
 static var _meshes := {}
 
 
@@ -43,18 +50,21 @@ static func plant(parent: Node3D, kind: String, points: Array) -> MultiMeshInsta
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "Foliage_" + kind
 	mmi.multimesh = mm
-	mmi.material_override = material()
+	mmi.material_override = material(KINDS[kind].get("texture", "hierba"))
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mmi)
 	return mmi
 
 
-static func material() -> ShaderMaterial:
-	if _material == null:
-		_material = ShaderMaterial.new()
-		_material.shader = load("res://shaders/ps1_foliage.gdshader")
-		_material.set_shader_parameter("foliage_texture", load(TEXTURE))
-	return _material
+static func material(texture := "hierba") -> ShaderMaterial:
+	if not _materials.has(texture):
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://shaders/ps1_foliage.gdshader")
+		mat.set_shader_parameter("foliage_texture", load(TEXTURES[texture]))
+		if texture != "hierba":
+			mat.set_shader_parameter("wind_strength", 0.04) # Las matas de hojas apenas se mueven.
+		_materials[texture] = mat
+	return _materials[texture]
 
 
 ## Tarjetas en estrella. Cada tarjeta usa un trozo distinto de la textura.
@@ -80,6 +90,18 @@ static func _mesh(kind: String) -> ArrayMesh:
 			st.set_normal(Vector3.UP)
 			st.set_uv(corners[idx][1])
 			st.add_vertex(corners[idx][0])
+	if def.get("top", false):
+		# Copa: tarjeta horizontal a media altura, vista desde arriba.
+		var h := size.y * 0.8
+		var r := size.x * 0.33
+		var top := [
+			[Vector3(-r, h, -r), Vector2(0, 0)], [Vector3(r, h, -r), Vector2(1, 0)],
+			[Vector3(r, h, r), Vector2(1, 1)], [Vector3(-r, h, r), Vector2(0, 1)],
+		]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(Vector3.UP)
+			st.set_uv(top[idx][1])
+			st.add_vertex(top[idx][0])
 	var mesh := st.commit()
 	_meshes[kind] = mesh
 	return mesh

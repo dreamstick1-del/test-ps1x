@@ -20,6 +20,12 @@ const PRESETS := {
 	# Foto de lado: se recortan hojas con transparencia para matas y arbustos.
 	"tallgrass": {"src": "tallgrass_photo.jpg", "crop": Rect2(0.0, 0.42, 1.0, 0.56), "size": 256,
 		"blades": 90},
+	"gravel": {"src": "gravel_photo.jpg", "crop": Rect2(0.0, 0.05, 0.68, 0.8), "size": 256,
+		"normal": 7.0, "equalize": 0.8},
+	# Fotos de hojas desde arriba: los huecos oscuros entre hojas se vuelven
+	# transparentes y se recorta una silueta redonda de mata.
+	"shrub": {"src": "shrub_photo.jpg", "crop": Rect2(0.15, 0.5, 0.7, 0.48), "size": 256, "leaves": 0.17},
+	"purple": {"src": "purple_photo.jpg", "crop": Rect2(0.1, 0.25, 0.8, 0.6), "size": 256, "leaves": 0.11},
 }
 
 
@@ -40,6 +46,9 @@ func _make(name: String, p: Dictionary) -> void:
 	var img := photo.get_region(r)
 	img.resize(size, size, Image.INTERPOLATE_LANCZOS)
 	_equalize(img, size, p.get("equalize", 1.0))
+	if p.has("leaves"):
+		_make_leaves(name, img, size, p.leaves)
+		return
 	if p.has("blades"):
 		_make_blades(name, img, size, p.blades)
 		return
@@ -104,6 +113,34 @@ func _make_blades(name: String, photo: Image, size: int, count: int) -> void:
 				if dry_tip and t > 0.8:
 					c = c.lerp(Color(0.55, 0.36, 0.2), 0.7)
 				out.set_pixel(px, py, Color(c.r, c.g, c.b, 1.0))
+	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
+	print("Textura '%s' (hojas recortadas) generada desde %s" % [name, PRESETS[name].src])
+
+
+## Mata de hojas: alfa = hoja (más clara que el hueco oscuro entre hojas)
+## dentro de una silueta redondeada de borde irregular, más plana por abajo.
+func _make_leaves(name: String, photo: Image, size: int, threshold: float) -> void:
+	var out := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var noise := FastNoiseLite.new()
+	noise.seed = 3
+	noise.frequency = 0.035
+	for y in size:
+		for x in size:
+			var c := photo.get_pixel(x, y)
+			var lum := c.get_luminance()
+			# Silueta: elipse con el borde mordido por ruido, apoyada abajo.
+			var u := (x + 0.5) / size * 2.0 - 1.0
+			var v := (y + 0.5) / size * 2.0 - 1.0
+			var r := Vector2(u, (v - 0.12) * 1.15).length() + noise.get_noise_2d(x, y) * 0.28
+			var inside := r < 0.9 and y < size - 2
+			var leaf := lum > threshold
+			# Más sombra hacia el centro-bajo de la mata (oclusión falsa).
+			var shade := 1.0 - clampf(v, 0.0, 1.0) * 0.35
+			# El corazón de la mata es macizo: los huecos se ven como sombra.
+			var core := r < 0.55
+			if core and not leaf:
+				shade *= 0.45
+			out.set_pixel(x, y, Color(c.r * shade, c.g * shade, c.b * shade, 1.0 if inside and (leaf or core) else 0.0))
 	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
 	print("Textura '%s' (hojas recortadas) generada desde %s" % [name, PRESETS[name].src])
 

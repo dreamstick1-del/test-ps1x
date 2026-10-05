@@ -138,7 +138,7 @@ func _build_terrain() -> void:
 				var p: Vector2 = quad[idx]
 				var g := ground_sample(p.x, p.y)
 				st.set_color(g.color)
-				st.set_uv2(Vector2(g.mud, 0.0))
+				st.set_uv2(Vector2(g.mud, g.gravel))
 				st.add_vertex(Vector3(p.x, height(p.x, p.y), p.y))
 	st.generate_normals()
 	var mesh := st.commit()
@@ -175,13 +175,14 @@ func ground_sample(x: float, z: float) -> Dictionary:
 	var tint := Color(1, 1, 1)
 	var dry := 0.3 + 0.18 * sin(x * 0.13 + 1.7) * cos(z * 0.11)
 	var mud := 0.0
+	var gravel := 0.0
 	var h := height(x, z)
 
 	# Dentro del pueblo: huertos y patios bien regados, sendas pisadas.
 	if absf(x) < 18.0 and absf(z) < 18.0:
 		dry = 0.2
 		for path: Rect2 in VILLAGE_PATHS:
-			mud = maxf(mud, 1.0 - clampf(_rect_distance(p, path) / 1.2, 0.0, 1.0))
+			gravel = maxf(gravel, 1.0 - clampf(_rect_distance(p, path) / 1.2, 0.0, 1.0))
 	# Colinas: más secas cuanto más altas; roca en las cumbres.
 	if h > 1.5:
 		dry = maxf(dry, clampf(0.55 + (h - 1.5) * 0.12, 0.0, 0.95))
@@ -223,10 +224,12 @@ func ground_sample(x: float, z: float) -> Dictionary:
 		tint = Color(1, 1, 1)
 		mud = 0.0
 		mud = maxf(mud, 1.0 - clampf(p.distance_to(Vector2(40, 11)) / 3.0, 0.0, 1.0))
-	# Caminos: tierra pisada en el centro que se funde con el pasto.
+	# Caminos: grava en el centro, una franja de tierra pisada y luego pasto.
 	var road := road_distance(x, z)
-	mud = maxf(mud, 1.0 - smoothstep(1.2, 2.6, road))
-	return {"color": Color(tint.r, tint.g, tint.b, clampf(dry, 0.0, 1.0)), "mud": clampf(mud, 0.0, 1.0)}
+	gravel = maxf(gravel, 1.0 - smoothstep(0.9, 2.0, road))
+	mud = maxf(mud, 1.0 - smoothstep(1.4, 2.8, road))
+	return {"color": Color(tint.r, tint.g, tint.b, clampf(dry, 0.0, 1.0)), "mud": clampf(mud, 0.0, 1.0),
+		"gravel": clampf(gravel, 0.0, 1.0)}
 
 
 static func _rect_distance(p: Vector2, r: Rect2) -> float:

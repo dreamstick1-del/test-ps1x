@@ -5,6 +5,7 @@
 //   - natural  : la foto tal cual                             (COLOR.a = 0.5)
 //   - seco     : lo verde se vuelve paja                       (COLOR.a = 1)
 //   - barro    : las fibras se vuelven tierra pisada           (UV2.x = 0..1)
+// y encima, grava de otra foto (gravel_albedo) para caminos   (UV2.y = 0..1)
 // COLOR.rgb sigue siendo un tinte (roca en las cumbres, arena en la orilla...).
 // Para que no se note la repetición, la textura se lee a dos escalas con
 // rotación distinta y se mezclan con un ruido de baja frecuencia.
@@ -15,6 +16,9 @@ global uniform float ps1_vertex_snap;
 
 uniform sampler2D grass_texture : source_color, filter_nearest_mipmap, repeat_enable;
 uniform sampler2D grass_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D gravel_texture : source_color, filter_nearest_mipmap, repeat_enable;
+uniform sampler2D gravel_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform float gravel_scale = 0.55;
 uniform float uv_scale = 0.45; // Repeticiones por metro.
 uniform float normal_depth : hint_range(0.0, 4.0) = 1.2;
 uniform vec3 lush_color : source_color = vec3(0.30, 0.48, 0.16);
@@ -24,6 +28,7 @@ uniform vec2 snap_resolution = vec2(160.0, 120.0);
 
 varying vec3 world_pos;
 varying float mud;
+varying float gravel;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -39,6 +44,7 @@ float value_noise(vec2 p) {
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	mud = UV2.x;
+	gravel = UV2.y;
 	vec4 clip = PROJECTION_MATRIX * (MODELVIEW_MATRIX * vec4(VERTEX, 1.0));
 	if (ps1_vertex_snap > 0.5 && clip.w > 0.0) {
 		vec2 ndc = clip.xy / clip.w;
@@ -76,7 +82,14 @@ void fragment() {
 	float dryness = clamp(COLOR.a + wobble, 0.0, 1.0);
 	float mud_amount = clamp(mud + (value_noise(world_pos.xz * 0.8) - 0.5) * 0.4 * step(0.05, mud), 0.0, 1.0);
 
-	ALBEDO = variant(tex, dryness, mud_amount) * COLOR.rgb;
+	vec3 col = variant(tex, dryness, mud_amount);
+	// Grava: borde irregular (ruido) para que el camino no sea una franja recta.
+	float g = clamp(gravel + (value_noise(world_pos.xz * 1.3) - 0.5) * 0.5 * step(0.05, gravel), 0.0, 1.0);
+	g = smoothstep(0.35, 0.65, g);
+	vec2 guv = rot * world_pos.xz * gravel_scale;
+	col = mix(col, texture(gravel_texture, guv).rgb * 1.15, g);
+	nrm = mix(nrm, texture(gravel_normal, guv).rgb, g);
+	ALBEDO = col * mix(COLOR.rgb, vec3(1.0), g);
 	NORMAL_MAP = nrm;
 	NORMAL_MAP_DEPTH = normal_depth * (1.0 - mud_amount * 0.5);
 	ROUGHNESS = 0.9;

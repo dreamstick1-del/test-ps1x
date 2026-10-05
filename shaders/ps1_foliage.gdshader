@@ -13,8 +13,9 @@ uniform float wind_strength = 0.12;
 uniform vec2 snap_resolution = vec2(160.0, 120.0);
 
 void vertex() {
-	// UV.y = 0 arriba, 1 abajo: el viento solo empuja la punta.
-	float sway = (1.0 - UV.y);
+	// UV.y = 0 arriba, 1 abajo: el viento solo empuja la punta
+	// (en la copa horizontal, según la altura del vértice).
+	float sway = abs(NORMAL.y) > 0.9 && VERTEX.y > 0.3 ? 0.7 : (1.0 - UV.y);
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float t = floor(TIME * 12.0) / 12.0;
 	float phase = t * 1.7 + wp.x * 0.35 + wp.z * 0.27;

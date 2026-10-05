@@ -16,6 +16,8 @@ const PLINTH_HEIGHT := 3.0
 const PLINTH_TOP := -1.6
 
 var map_features: Array[Dictionary] = []
+## Esquinas delanteras de los edificios donde van plantas de jardín.
+var garden_spots: Array[Vector3] = []
 ## Líneas del minimapa (río, caminos): {points, color, width}.
 var map_lines: Array[Dictionary] = []
 ## Nodos que giran sin parar (rueda del molino): {node, speed}.
@@ -47,6 +49,7 @@ func _ready() -> void:
 	_build_location_zones()
 	_build_training_ground()
 	_build_animals()
+	_build_gardens()
 
 
 func _process(delta: float) -> void:
@@ -285,6 +288,8 @@ func _building(pos: Vector3, cells: int, plants: int, rot_y: float, opts := {}) 
 
 	_solid(Vector3(length, plants * 3.0, 4.0), pos + Vector3(0, plants * 1.5, 0), rot_y)
 	_feature(pos, Vector2(length, 4.0), opts.get("map_color", Color(0.6, 0.45, 0.3)), rot_y)
+	for corner: float in [-1.0, 1.0]:
+		garden_spots.append(pos + Vector3(corner * (length * 0.5 - 0.5), 0, 2.6).rotated(Vector3.UP, rot_y))
 	return root
 
 
@@ -625,6 +630,27 @@ func _build_animals() -> void:
 			animal.position = Vector3(c.x, Countryside.height(c.x, c.y) + 0.3, c.y)
 			animal.rotation.y = _rng.randf() * TAU
 			add_child(animal)
+
+
+## Plantas de jardín junto a las casas y la iglesia (fotos de hojas):
+## setos verdes y matas moradas con flores, alternando.
+func _build_gardens() -> void:
+	var hedges := []
+	var purple := []
+	var i := 0
+	for spot: Vector3 in garden_spots:
+		var floor_y := Countryside.height(spot.x, spot.z) if absf(spot.x) > HALF or absf(spot.z) > HALF else 0.0
+		var point := {"pos": Vector3(spot.x, floor_y, spot.z), "scale": 0.9 + (i % 3) * 0.12}
+		if i % 3 == 1:
+			purple.append(point)
+		else:
+			hedges.append(point)
+		i += 1
+	# Parterres en las esquinas de la plaza.
+	for c: Vector2 in [Vector2(-5.9, 5.9), Vector2(5.9, 5.9), Vector2(-5.9, -6.2), Vector2(5.9, -6.2)]:
+		purple.append({"pos": Vector3(c.x, 0, c.y), "scale": 1.4})
+	Foliage.plant(self, "seto", hedges)
+	Foliage.plant(self, "ornamental", purple)
 
 
 # --- Utilidades ----------------------------------------------------------------

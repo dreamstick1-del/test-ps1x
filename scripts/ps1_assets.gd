@@ -147,6 +147,8 @@ static func terrain() -> ShaderMaterial:
 		mat.shader = TERRAIN_SHADER
 		mat.set_shader_parameter("grass_texture", load("res://assets/textures/grass_albedo.png"))
 		mat.set_shader_parameter("grass_normal", load("res://assets/textures/grass_normal.png"))
+		mat.set_shader_parameter("gravel_texture", load("res://assets/textures/gravel_albedo.png"))
+		mat.set_shader_parameter("gravel_normal", load("res://assets/textures/gravel_normal.png"))
 		_materials["__terrain"] = mat
 	return _materials["__terrain"]
 
