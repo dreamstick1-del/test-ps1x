@@ -14,12 +14,12 @@ extends Node
 const WAVES := [
 	[
 		{"pos": Vector3(-1.0, 0, 15.6), "model": "Character_05"},
-		{"pos": Vector3(1.0, 0, 15.9), "model": "Character_03"},
+		{"pos": Vector3(1.0, 0, 15.9), "model": "Character_Male_33"},
 		{"pos": Vector3(0.0, 0, 14.6), "model": "Character_05"},
 	],
 	[
 		{"pos": Vector3(-1.2, 0, 15.6), "model": "Character_03"},
-		{"pos": Vector3(1.2, 0, 15.6), "model": "Character_05"},
+		{"pos": Vector3(1.2, 0, 15.6), "model": "Character_Male_35"},
 		{"pos": Vector3(0.0, 0, 16.2), "model": "Character_04", "boss": true},
 	],
 ]

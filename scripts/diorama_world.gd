@@ -480,9 +480,7 @@ func _build_villagers() -> void:
 		"Clic izquierdo para golpear, clic derecho para cubrirte. Si te cubres justo a tiempo, desarmas al rival.",
 	])
 	_villager("Theresa", Vector3(-2.4, 0, 2.6), PI * 0.85, {
-		"tunic_color": Color(0.30, 0.38, 0.55), "sleeve_color": Color(0.85, 0.80, 0.68),
-		"hair_color": Color(0.55, 0.32, 0.14), "pants_color": Color(0.30, 0.38, 0.55),
-		"body_scale": 0.94,
+		"model": "res://assets/characters/Character_34_Female.fbx", "outfit": "aldeana",
 	}, {}, [
 		"Buenos días, Henry. Qué mañana tan tranquila, ¿verdad?",
 		"Dicen que por el camino del sur se han visto columnas de humo.",
@@ -510,9 +508,7 @@ func _build_villagers() -> void:
 		"Si ves a mi mujer, yo no estoy aquí.",
 	])
 	_villager("Ludmila", Vector3(-5.9, 0, -2.0), PI / 2, {
-		"tunic_color": Color(0.55, 0.2, 0.25), "sleeve_color": Color(0.9, 0.85, 0.72),
-		"hair_color": Color(0.3, 0.18, 0.1), "pants_color": Color(0.55, 0.2, 0.25),
-		"has_hood": true, "body_scale": 0.92,
+		"model": "res://assets/characters/Character_36_Female.fbx", "outfit": "mercadera",
 	}, {"shop": "mercado", "profession": "comerciante"}, ["¡Pan, huevos, cerveza! ¡Lo mejor de Skalitz!"])
 	_villager("Pešek", _on_ground(34.6, -7.5), PI / 2, {
 		"model": "res://assets/characters/Character_02.fbx", "outfit": "molinero",
@@ -528,6 +524,17 @@ func _build_villagers() -> void:
 	}, {"profession": "pastor"}, [
 		"Cuidado con mis ovejas, muchacho. Cada una vale su peso en lana.",
 		"Por las noches bajan lobos del bosque del noroeste.",
+	])
+	_villager("Marta", _on_ground(-19.5, 30.5), PI * 0.75, {
+		"model": "res://assets/characters/Character_38_Female.fbx", "outfit": "granjera",
+	}, {"profession": "campesino"}, [
+		"Estos cerdos comen más que mi marido. Y ya es decir.",
+		"Las gallinas ponen más cuando nadie las persigue con una espada, Henry.",
+	])
+	_villager("Jan", _on_ground(19.2, 8.0), -PI / 2, {
+		"model": "res://assets/characters/Character_Male_38.fbx", "outfit": "campesino",
+	}, {"profession": "campesino"}, [
+		"Trigo, trigo y más trigo. Y luego el molinero se queda con su parte.",
 	])
 	_villager("Guardia del castillo", _on_ground(0, -29.5), 0.0, {
 		"model": "res://assets/characters/Character_04.fbx", "outfit": "guardia", "weapon": "sword",

@@ -11,11 +11,11 @@ extends RefCounted
 ## cual y la ropa se re-tiñe usando su luminancia, así se mantienen los pliegues.
 ## Sin original, todo se pinta proceduralmente.
 ##
-## El resultado es una textura pequeña (128x128) con paleta reducida: PS1 pura.
+## El resultado es una textura de 256x256 con color de 15 bits: PS1 pura.
 
 enum Region { HEAD, TORSO, UPPER_ARM, FOREARM, HAND, THIGH, SHIN, FOOT }
 
-const SIZE := 128
+const SIZE := 256
 
 ## Atuendos predefinidos. Claves opcionales: robe, mail, tabard, apron, hood, beard, bald.
 const OUTFITS := {
@@ -82,6 +82,27 @@ const OUTFITS := {
 		"sleeve": Color(0.85, 0.82, 0.7), "hose": Color(0.35, 0.3, 0.22),
 		"boots": Color(0.22, 0.15, 0.09), "belt": Color(0.3, 0.22, 0.12),
 		"hood": Color(0.3, 0.42, 0.28), "beard": Color(0.5, 0.35, 0.2),
+	},
+	"aldeana": {
+		"skin": Color(0.88, 0.70, 0.58), "hair": Color(0.45, 0.28, 0.14),
+		"tunic": Color(0.28, 0.36, 0.55), "trim": Color(0.85, 0.78, 0.55),
+		"sleeve": Color(0.88, 0.84, 0.72), "hose": Color(0.28, 0.36, 0.55),
+		"boots": Color(0.22, 0.15, 0.09), "belt": Color(0.4, 0.28, 0.15),
+		"robe": true, "apron": Color(0.9, 0.88, 0.8), "hood": Color(0.92, 0.9, 0.84),
+	},
+	"mercadera": {
+		"skin": Color(0.86, 0.68, 0.56), "hair": Color(0.3, 0.18, 0.1),
+		"tunic": Color(0.55, 0.16, 0.2), "trim": Color(0.85, 0.68, 0.3),
+		"sleeve": Color(0.55, 0.16, 0.2), "hose": Color(0.55, 0.16, 0.2),
+		"boots": Color(0.2, 0.13, 0.08), "belt": Color(0.85, 0.68, 0.3),
+		"robe": true, "hood": Color(0.85, 0.82, 0.7),
+	},
+	"granjera": {
+		"skin": Color(0.84, 0.64, 0.5), "hair": Color(0.55, 0.38, 0.2),
+		"tunic": Color(0.45, 0.36, 0.24), "trim": Color(0.35, 0.28, 0.18),
+		"sleeve": Color(0.82, 0.78, 0.66), "hose": Color(0.45, 0.36, 0.24),
+		"boots": Color(0.22, 0.15, 0.09), "belt": Color(0.3, 0.22, 0.12),
+		"robe": true, "apron": Color(0.75, 0.72, 0.62), "hood": Color(0.35, 0.48, 0.32),
 	},
 	"campesino": {
 		"skin": Color(0.78, 0.56, 0.42), "hair": Color(0.45, 0.30, 0.15),
@@ -283,10 +304,15 @@ class _Context:
 		var material := "cloth"
 		match region:
 			Region.HEAD:
-				if original and not o.has("hood"):
-					return _quantize(orig.lerp(Color(orig.get_luminance(), orig.get_luminance(), orig.get_luminance()), 0.15))
-				c = _head(p, n)
-				material = "skin"
+				if original:
+					# Cara original intacta; solo la capucha/pañuelo se pinta encima.
+					if o.has("hood") and not _is_face(p, n) and p.y > neck_y - 0.02:
+						c = o.hood
+					else:
+						return _quantize(orig.lerp(Color(orig.get_luminance(), orig.get_luminance(), orig.get_luminance()), 0.12))
+				else:
+					c = _head(p, n)
+					material = "skin"
 			Region.HAND:
 				c = o.skin
 				material = "skin"
@@ -356,6 +382,13 @@ class _Context:
 		if p.y > hem:
 			return o.trim
 		return o.hose
+
+	## Zona de la cara (frente a ojos y barbilla) que la capucha deja al aire.
+	func _is_face(p: Vector3, n: Vector3) -> bool:
+		var h := head_top - head_y
+		var eye_y := head_y + h * 0.48
+		return n.z > 0.35 and p.z > head_z - 0.01 and absf(p.x - head_x) < 0.08 \
+			and p.y < eye_y + h * 0.32 and p.y > head_y - 0.04
 
 	func _head(p: Vector3, n: Vector3) -> Color:
 		var h := head_top - head_y

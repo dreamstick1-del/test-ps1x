@@ -20,6 +20,12 @@ const CAST := [
 	["Character_02", "molinero"],
 	["Character_05", "minero"],
 	["Character_03", "pastor"],
+	["Character_34_Female", "aldeana"],
+	["Character_36_Female", "mercadera"],
+	["Character_38_Female", "granjera"],
+	["Character_Male_33", "bandido"],
+	["Character_Male_35", "bandido"],
+	["Character_Male_38", "campesino"],
 ]
 
 
