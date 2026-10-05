@@ -26,6 +26,8 @@ var spinners: Array[Dictionary] = []
 var _first_person := false
 var _sun: DirectionalLight3D
 var _env: Environment
+var _atmosphere: Atmosphere
+var _diorama_only: Array[Node3D] = [] ## Mesa y placa: solo se ven desde fuera.
 var _fire_light: OmniLight3D
 var _fire_timer := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -63,21 +65,25 @@ func _process(delta: float) -> void:
 	_update_daylight()
 
 
-## Sol, luz ambiente y color del cielo según la hora (Economy.hour).
+## Sol (o luna), luz ambiente, cielo y niebla según la hora (Economy.hour).
+## El sol sale por el este (+X), pasa por el sur (+Z) y se pone por el oeste.
 func _update_daylight() -> void:
 	var d := Economy.daylight()
-	_sun.light_energy = lerpf(0.08, 1.05, d)
-	_sun.rotation_degrees.x = lerpf(-8.0, -58.0, d)
-	_sun.light_color = Color(1.0, 0.6, 0.4).lerp(Color(1.0, 0.92, 0.78), d)
+	var hour := Economy.hour
+	var a := (hour - 6.0) / 12.0 * PI
+	var toward_sun := Vector3(cos(a), sin(a) * 0.85, sin(a) * 0.4).normalized()
+	var sun_up := toward_sun.y > -0.04
+	# De noche ilumina la luna, desde el lado contrario.
+	var toward_light := toward_sun if sun_up else -toward_sun
+	toward_light.y = maxf(toward_light.y, 0.12)
+	_sun.basis = Basis.looking_at(-toward_light.normalized(), Vector3.UP)
+	_sun.light_energy = lerpf(0.1, 1.05, d)
+	_sun.light_color = Color(0.55, 0.62, 0.9).lerp(Color(1.0, 0.6, 0.4), minf(d * 4.0, 1.0)) \
+		.lerp(Color(1.0, 0.92, 0.78), clampf((d - 0.25) / 0.5, 0.0, 1.0))
 	_env.ambient_light_energy = lerpf(0.3, 0.75, d)
 	_env.ambient_light_color = Color(0.32, 0.38, 0.6).lerp(Color(0.55, 0.55, 0.66), d)
 	if _first_person:
-		var night := Color(0.04, 0.05, 0.1)
-		var dusk := Color(0.6, 0.42, 0.36)
-		var day := Color(0.48, 0.56, 0.68)
-		var sky := night.lerp(dusk, d / 0.35) if d < 0.35 else dusk.lerp(day, (d - 0.35) / 0.65)
-		_env.background_color = sky
-		_env.fog_light_color = sky
+		_atmosphere.update(hour, d, toward_sun, sun_up)
 
 
 # --- Entorno -------------------------------------------------------------------
@@ -86,10 +92,13 @@ func _update_daylight() -> void:
 ## dibujado corta típica de PS1). Desde fuera: la habitación oscura.
 func set_first_person(enabled: bool) -> void:
 	_first_person = enabled
+	_atmosphere.set_enabled(enabled)
+	for n in _diorama_only:
+		n.visible = not enabled
 	if not enabled:
 		_env.background_color = Color(0.09, 0.07, 0.10)
 		_env.fog_light_color = _env.background_color
-	create_tween().tween_property(_env, "fog_density", 0.035 if enabled else 0.0015, 1.0)
+		create_tween().tween_property(_env, "fog_density", 0.0015, 1.0)
 
 
 func _build_environment() -> void:
@@ -107,6 +116,10 @@ func _build_environment() -> void:
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
+	_atmosphere = Atmosphere.new()
+	_atmosphere.name = "Atmosphere"
+	add_child(_atmosphere)
+	_atmosphere.setup(env)
 
 	var sun := DirectionalLight3D.new()
 	_sun = sun
@@ -130,11 +143,11 @@ func _build_base() -> void:
 	table.size = Vector2(420, 420)
 	table.subdivide_width = 30
 	table.subdivide_depth = 30
-	_mesh(self, table, Vector3(0, PLINTH_TOP - PLINTH_HEIGHT, 0),
-		PS1Assets.material("wood", Color(0.35, 0.24, 0.2), Vector2(0.05, 0.05)))
+	_diorama_only.append(_mesh(self, table, Vector3(0, PLINTH_TOP - PLINTH_HEIGHT, 0),
+		PS1Assets.material("wood", Color(0.35, 0.24, 0.2), Vector2(0.05, 0.05))))
 
 	var plaque_z := WORLD_HALF + 1.2
-	_box(self, Vector3(22, 2.2, 0.1), Vector3(0, PLINTH_TOP - 1.5, plaque_z + 0.02), PS1Assets.flat(Color(0.45, 0.33, 0.12)))
+	_diorama_only.append(_box(self, Vector3(22, 2.2, 0.1), Vector3(0, PLINTH_TOP - 1.5, plaque_z + 0.02), PS1Assets.flat(Color(0.45, 0.33, 0.12))))
 	var label := Label3D.new()
 	label.text = "SKALITZ  ·  ANNO 1403"
 	label.font_size = 64
@@ -145,6 +158,7 @@ func _build_base() -> void:
 	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	label.position = Vector3(0, PLINTH_TOP - 1.5, plaque_z + 0.08)
 	add_child(label)
+	_diorama_only.append(label)
 
 
 func _build_ground() -> void:

@@ -54,6 +54,19 @@ Abre la carpeta con Godot 4.3 o superior y pulsa F5. No hacen falta plugins.
   ritmo de la velocidad real (sin patinar). `tools/anim_frame_sheets.gd` genera hojas de
   fotogramas (perfil y frente) con medidas para revisarlas.
 
+### Cielo, niebla y nubes
+
+`scripts/world/atmosphere.gd` (en primera persona):
+
+- **Cielo** (`shaders/ps1_sky.gdshader`): degradado en bandas, nubes en dos capas que se mueven
+  con el viento (cuatro tonos, sin degradados suaves), sol que sale por el este y se pone por el
+  oeste, luna y estrellas de noche. La nubosidad cambia de un día a otro.
+- **Niebla** según la hora: espesa al amanecer, ligera a mediodía, más densa en los valles y el
+  río (niebla de altura). **Bancos de niebla baja** (`shaders/ps1_mist.gdshader`) sobre el río,
+  los bosques y los prados, sobre todo por la mañana.
+- **Horizonte** (`shaders/ps1_horizon.gdshader`): siluetas de montes y bosque lejanos alrededor de
+  la cámara, para que más allá de la maqueta no se vea el vacío.
+
 ## El mapa (96x96 m)
 
 ```
