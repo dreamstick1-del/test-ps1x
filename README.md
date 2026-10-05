@@ -48,8 +48,11 @@ Abre la carpeta con Godot 4.3 o superior y pulsa F5. No hacen falta plugins.
 - **Aldeanos**: trabajan según su oficio (el herrero y el minero martillean, los campesinos cavan,
   el cura reza, la mercadera pregona, los guardias montan guardia), miran alrededor, se giran y te
   saludan al acercarte, se encogen de miedo durante el asalto y lo celebran al acabar.
-- Las animaciones (`scripts/ps1_rigged_character.gd`) se generan por código sobre el rig Mixamo,
-  a saltos (interpolación NEAREST) como en PS1.
+- Las animaciones (`scripts/ps1_rigged_character.gd`) se generan por código sobre el rig Mixamo:
+  poses clave muestreadas a 15 fps y reproducidas a saltos (NEAREST) como en PS1. La cadera se
+  ajusta sola en cada fotograma para que los pies pisen el suelo; andar, correr y rodear van al
+  ritmo de la velocidad real (sin patinar). `tools/anim_frame_sheets.gd` genera hojas de
+  fotogramas (perfil y frente) con medidas para revisarlas.
 
 ## El mapa (96x96 m)
 

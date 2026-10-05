@@ -143,12 +143,13 @@ func _physics_process(delta: float) -> void:
 					_timer = randf_range(0.6, 1.1)
 					model.play_once("block")
 				elif dist > attack_range + 1.4 or (dist > attack_range * 0.8 and _cooldown <= 0.0):
-					desired = _steer(to / dist, delta) * move_speed * (1.25 if dist > 5.0 else 1.0)
-					model.play("run" if dist > 5.0 else "walk")
+					var spd := move_speed * (1.25 if dist > 5.0 else 1.0)
+					desired = _steer(to / dist, delta) * spd
+					model.play_moving("run" if dist > 5.0 else "walk", spd)
 				elif dist < attack_range * 0.6:
 					# Demasiado cerca: un paso atrás.
 					desired = -to / dist * move_speed * 0.5
-					model.play("walk_back")
+					model.play_moving("walk_back", move_speed * 0.5)
 				else:
 					desired = _circle(to / dist, delta)
 			State.ATTACK:
@@ -211,7 +212,7 @@ func _circle(dir: Vector3, delta: float) -> Vector3:
 	if get_real_velocity().length() < 0.2 and _strafe_t < 0.5:
 		_strafe_dir = -_strafe_dir # Contra una pared: al otro lado.
 		_strafe_t = 1.0
-	model.play("strafe_r" if _strafe_dir > 0.0 else "strafe_l")
+	model.play_moving("strafe_r" if _strafe_dir > 0.0 else "strafe_l", move_speed * 0.5)
 	return dir.cross(Vector3.UP) * _strafe_dir * move_speed * 0.5
 
 
