@@ -146,11 +146,12 @@ func _build_base() -> void:
 
 func _build_ground() -> void:
 	var dirt := PS1Assets.material("dirt", Color.WHITE, Vector2(0.6, 0.6))
-	_plane(Vector2(3.0, 12.0), Vector3(0, 0.02, 11.9), dirt, 6)      # camino sur
+	Paving.build(self, Rect2(-1.6, 5.5, 3.2, 11.3), 0.7, [0.6, 0.8, 1.0], 11) # calle a la puerta sur
 	_plane(Vector2(4.5, 3.0), Vector3(7.5, 0.02, 1.0), dirt, 3)      # hacia la forja
 	_plane(Vector2(5.6, 2.4), Vector3(-8.2, 0.02, 4.5), dirt, 3)     # barrio oeste
-	_plane(Vector2(2.6, 1.4), Vector3(0, 0.02, -5.9), dirt, 2)       # puerta iglesia
-	_plane(Vector2(11, 11), Vector3(0, 0.035, 0), PS1Assets.material("cobble", Color.WHITE, Vector2(0.5, 0.5)), 6)
+	# Plaza enlosada con losas de piedra reales (geometría + relieve de la foto).
+	Paving.build(self, Rect2(-5.5, -5.5, 11, 11))
+	Paving.build(self, Rect2(-1.3, -6.6, 2.6, 1.1), 0.9, [0.9, 1.2, 1.5], 7)
 	map_features.append({"pos": Vector2(0, 0), "size": Vector2(11, 11), "rot": 0.0, "color": Color(0.45, 0.43, 0.4)})
 	map_features.append({"pos": Vector2(0, 11.9), "size": Vector2(3, 12), "rot": 0.0, "color": Color(0.5, 0.38, 0.25)})
 

@@ -6,6 +6,7 @@ extends RefCounted
 
 const SHADER := preload("res://shaders/ps1_spatial.gdshader")
 const VIEWMODEL_SHADER := preload("res://shaders/ps1_viewmodel.gdshader")
+const RELIEF_SHADER := preload("res://shaders/ps1_relief.gdshader")
 const TEX_SIZE := 32
 
 static var _textures := {}
@@ -123,6 +124,19 @@ static func vertex_colored(tex_name: String, uv_scale := Vector2(0.5, 0.5), worl
 	var mat := material(tex_name, Color.WHITE, uv_scale, world_uv).duplicate() as ShaderMaterial
 	mat.set_shader_parameter("use_vertex_color", true)
 	return mat
+
+
+## Suelo con relieve (normal map). Usa el color de vértice como tinte por pieza.
+static func relief(albedo_path: String, normal_path: String, uv_scale := Vector2(0.6, 0.6)) -> ShaderMaterial:
+	var key := "relief|%s|%s" % [albedo_path, uv_scale]
+	if not _materials.has(key):
+		var mat := ShaderMaterial.new()
+		mat.shader = RELIEF_SHADER
+		mat.set_shader_parameter("albedo_texture", load(albedo_path))
+		mat.set_shader_parameter("normal_texture", load(normal_path))
+		mat.set_shader_parameter("uv_scale", uv_scale)
+		_materials[key] = mat
+	return _materials[key]
 
 
 ## Material del arma en primera persona (sin test de profundidad).
