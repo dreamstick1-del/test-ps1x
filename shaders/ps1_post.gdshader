@@ -1,10 +1,11 @@
-// Post-proceso aplicado al SubViewportContainer del juego (320x240):
+// Post-proceso aplicado al SubViewportContainer del juego (480x360 o 320x240):
 // reduce el color a 15 bits (5 bits por canal, como la PS1) con dithering Bayer 4x4.
 shader_type canvas_item;
 
 uniform bool dither_enabled = true;
 uniform float color_levels = 32.0;
 uniform vec2 render_size = vec2(320.0, 240.0);
+uniform float dither_strength = 1.0;
 
 float bayer4(ivec2 p) {
 	// Matriz de Bayer 4x4 codificada por filas.
@@ -21,7 +22,7 @@ void fragment() {
 	vec4 c = texture(TEXTURE, UV);
 	if (dither_enabled) {
 		ivec2 p = ivec2(floor(UV * render_size));
-		c.rgb += bayer4(p) / color_levels;
+		c.rgb += bayer4(p) * dither_strength / color_levels;
 		c.rgb = floor(c.rgb * (color_levels - 1.0) + 0.5) / (color_levels - 1.0);
 	}
 	COLOR = vec4(clamp(c.rgb, 0.0, 1.0), 1.0);

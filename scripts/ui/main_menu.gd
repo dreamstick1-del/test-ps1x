@@ -11,6 +11,7 @@ var _option_buttons := {}
 var _started := false
 
 const OPTION_LABELS := {
+	"nitido": "Imagen nítida (480p)",
 	"crt": "Filtro CRT",
 	"dither": "Dithering 15 bits",
 	"vertex_jitter": "Temblor de vértices",
@@ -62,7 +63,7 @@ func _ready() -> void:
 	PS1Theme.menu_button(_main_box, "Opciones").pressed.connect(_show_options)
 	PS1Theme.menu_button(_main_box, "Salir").pressed.connect(func() -> void: get_tree().quit())
 
-	_options_box = _make_panel(Vector2(70, 120), Vector2(180, 0))
+	_options_box = _make_panel(Vector2(70, 100), Vector2(180, 0))
 	for key: String in OPTION_LABELS:
 		var b := PS1Theme.menu_button(_options_box, "")
 		_option_buttons[key] = b

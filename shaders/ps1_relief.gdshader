@@ -26,7 +26,7 @@ void vertex() {
 	vec4 clip = PROJECTION_MATRIX * (MODELVIEW_MATRIX * vec4(VERTEX, 1.0));
 	if (ps1_vertex_snap > 0.5 && clip.w > 0.0) {
 		vec2 ndc = clip.xy / clip.w;
-		ndc = round(ndc * snap_resolution) / snap_resolution;
+		ndc = round(ndc * snap_resolution * ps1_vertex_snap) / (snap_resolution * ps1_vertex_snap);
 		clip.xy = ndc * clip.w;
 	}
 	POSITION = clip;

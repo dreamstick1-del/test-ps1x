@@ -95,6 +95,8 @@ var objective := ""
 var last_speaker := ""
 
 var settings := {
+	## Imagen nítida: 480x360 en vez de 320x240 y temblor de vértices más fino.
+	"nitido": true,
 	"crt": true,
 	"dither": true,
 	"vertex_jitter": true,
@@ -241,7 +243,11 @@ func set_setting(key: String, value: bool) -> void:
 
 func _apply_render_settings() -> void:
 	# Uniformes globales declarados en project.godot -> [shader_globals].
-	RenderingServer.global_shader_parameter_set("ps1_vertex_snap", 1.0 if settings.vertex_jitter else 0.0)
+	# 0 = sin temblor; 1 = rejilla clásica de 160x120; 2 = la mitad de temblor.
+	var snap := 0.0
+	if settings.vertex_jitter:
+		snap = 2.0 if settings.nitido else 1.0
+	RenderingServer.global_shader_parameter_set("ps1_vertex_snap", snap)
 	RenderingServer.global_shader_parameter_set("ps1_affine", 1.0 if settings.affine else 0.0)
 
 

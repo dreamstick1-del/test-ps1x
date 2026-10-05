@@ -67,6 +67,12 @@ Abre la carpeta con Godot 4.3 o superior y pulsa F5. No hacen falta plugins.
 - **Horizonte** (`shaders/ps1_horizon.gdshader`): siluetas de montes y bosque lejanos alrededor de
   la cámara, para que más allá de la maqueta no se vea el vacío.
 
+### Imagen nítida
+
+Opción del menú (activada por defecto): el 3D se dibuja a 480x360 en vez de 320x240, el temblor
+de vértices es la mitad de fuerte y las scanlines, la viñeta y el tramado son más suaves. Al
+desactivarla vuelve el look PS1 clásico a 320x240. La interfaz siempre va a 320x240.
+
 ## El mapa (96x96 m)
 
 ```

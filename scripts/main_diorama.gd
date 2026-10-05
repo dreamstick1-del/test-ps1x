@@ -1,5 +1,6 @@
 extends Control
-## Escena principal: contiene el diorama 3D (SubViewport 320x240), la interfaz
+## Escena principal: contiene el diorama 3D (SubViewport 480x360, o 320x240 en
+## modo clásico), la interfaz
 ## (otro SubViewport 320x240 transparente) y el marco CRT a resolución nativa.
 ## Orquesta el flujo:
 ##   MENU (cámara orbitando la maqueta) -> CUTSCENE (intro que acaba metiéndose
@@ -62,9 +63,19 @@ func _process(_delta: float) -> void:
 
 
 func _apply_settings() -> void:
+	var sharp: bool = GameManager.settings.nitido
+	# Nítido: el 3D se dibuja a 480x360 (cada píxel ocupa 2x2 en la ventana de
+	# 960x720); clásico: 320x240 (3x3). La interfaz sigue a 320x240.
+	game_view.stretch_shrink = 2 if sharp else 3
 	crt_overlay.visible = GameManager.settings.crt
+	var crt := crt_overlay.material as ShaderMaterial
+	crt.set_shader_parameter("scanline_strength", 0.14 if sharp else 0.28)
+	crt.set_shader_parameter("vignette_strength", 0.35 if sharp else 0.55)
 	var post := game_view.material as ShaderMaterial
 	post.set_shader_parameter("dither_enabled", GameManager.settings.dither)
+	post.set_shader_parameter("render_size", Vector2(960, 720) / game_view.stretch_shrink)
+	# Con más resolución el tramado se nota menos: se suaviza un poco.
+	post.set_shader_parameter("dither_strength", 0.6 if sharp else 1.0)
 
 
 func _on_new_game() -> void:
