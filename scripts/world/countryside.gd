@@ -651,38 +651,27 @@ func _far_from(spots: Array[Vector2], p: Vector2, d: float) -> bool:
 
 
 ## Árboles con MultiMesh (tronco + 3 conos): cientos de árboles en pocas llamadas.
+## Pinos: tronco 3D + 16 planos de agujas (tipo "pino" de Foliage), en MultiMesh.
 func _plant(spots: Array[Vector2]) -> void:
 	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.14
-	trunk.bottom_radius = 0.22
-	trunk.height = 1.4
+	trunk.top_radius = 0.1
+	trunk.bottom_radius = 0.2
+	trunk.height = 2.4
 	trunk.radial_segments = 5
 	trunk.rings = 1
-	var layers: Array[MultiMesh] = []
 	var trunk_mm := _multimesh(trunk, spots.size())
-	for layer in 3:
-		var cone := CylinderMesh.new()
-		cone.top_radius = 0.0
-		cone.bottom_radius = 1.25 - layer * 0.3
-		cone.height = 1.5
-		cone.radial_segments = 6
-		cone.rings = 1
-		layers.append(_multimesh(cone, spots.size()))
 	var body := StaticBody3D.new()
 	body.name = "ForestCollision"
 	w.add_child(body)
-	var greens := [Color(0.16, 0.32, 0.14), Color(0.22, 0.38, 0.16), Color(0.28, 0.40, 0.15), Color(0.13, 0.27, 0.15)]
+	var crowns := []
 	for i in spots.size():
 		var p := spots[i]
 		var s := rng.randf_range(0.9, 1.5)
 		var base := Vector3(p.x, height(p.x, p.y) - 0.1, p.y)
 		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s)
-		trunk_mm.set_instance_transform(i, Transform3D(basis, base + Vector3(0, 0.7 * s, 0)))
-		trunk_mm.set_instance_color(i, Color(0.6, 0.45, 0.35))
-		var green: Color = greens[rng.randi() % greens.size()]
-		for layer in 3:
-			layers[layer].set_instance_transform(i, Transform3D(basis, base + Vector3(0, (1.7 + layer * 0.75) * s, 0)))
-			layers[layer].set_instance_color(i, green)
+		trunk_mm.set_instance_transform(i, Transform3D(basis, base + Vector3(0, 1.2 * s, 0)))
+		trunk_mm.set_instance_color(i, Color(0.5, 0.36, 0.28))
+		crowns.append({"pos": base, "scale": s, "tint": Color(1, 1, 1) * rng.randf_range(0.8, 1.1)})
 		var cs := CollisionShape3D.new()
 		var shape := CylinderShape3D.new()
 		shape.radius = 0.28 * s
@@ -696,11 +685,7 @@ func _plant(spots: Array[Vector2]) -> void:
 	trunk_mi.multimesh = trunk_mm
 	trunk_mi.material_override = PS1Assets.vertex_colored("wood", Vector2(1, 1), false)
 	w.add_child(trunk_mi)
-	for mm: MultiMesh in layers:
-		var mi := MultiMeshInstance3D.new()
-		mi.multimesh = mm
-		mi.material_override = PS1Assets.vertex_colored("", Vector2.ONE, false)
-		w.add_child(mi)
+	Foliage.plant(w, "pino", crowns)
 
 
 func _multimesh(mesh: Mesh, count: int) -> MultiMesh:

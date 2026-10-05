@@ -28,6 +28,9 @@ const PRESETS := {
 	"purple": {"src": "purple_photo.jpg", "crop": Rect2(0.1, 0.25, 0.8, 0.6), "size": 256, "leaves": 0.11},
 	# Hojas sueltas fotografiadas sobre un dedo: se recortan (PNG con alfa) y se
 	# estampan muchas veces para formar un racimo de copa de árbol.
+	# Silueta de pino (abeto) con pisos de ramas caídas hechas de miles de agujas;
+	# el color sale de la foto de pasto, oscurecido hacia verde azulado.
+	"pine": {"src": "grass_photo.jpg", "crop": Rect2(0, 0, 1, 1), "size": 256, "needles": 9000},
 	"leafcluster": {"src": "leaf_front_photo.jpg", "srcs": ["leaf_front_photo.jpg", "leaf_back_photo.jpg"],
 		"crop": Rect2(0, 0, 1, 1), "size": 256, "cluster": 130},
 }
@@ -50,6 +53,9 @@ func _make(name: String, p: Dictionary) -> void:
 	var img := photo.get_region(r)
 	img.resize(size, size, Image.INTERPOLATE_LANCZOS)
 	_equalize(img, size, p.get("equalize", 1.0))
+	if p.has("needles"):
+		_make_pine(name, img, size, p.needles)
+		return
 	if p.has("cluster"):
 		_make_cluster(name, p)
 		return
@@ -122,6 +128,56 @@ func _make_blades(name: String, photo: Image, size: int, count: int) -> void:
 				out.set_pixel(px, py, Color(c.r, c.g, c.b, 1.0))
 	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
 	print("Textura '%s' (hojas recortadas) generada desde %s" % [name, PRESETS[name].src])
+
+
+## ¿Está (u, v) dentro de la silueta de abeto? u, v en 0..1 (v = 0 arriba).
+## Cinco pisos de ramas: cada piso se ensancha hacia abajo y acaba en un borde
+## ondulado; el árbol entero se ensancha con la altura.
+func _pine_halfwidth(v: float) -> float:
+	var tiers := 5.0
+	var f := fmod(v * tiers, 1.0)
+	return (0.08 + 0.92 * v) * 0.47 * (0.4 + 0.6 * f)
+
+
+func _make_pine(name: String, photo: Image, size: int, needles: int) -> void:
+	var out := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	# Tronco al centro.
+	for y in range(int(size * 0.15), size):
+		for x in range(size / 2 - 2, size / 2 + 2):
+			out.set_pixel(x, y, Color(0.22, 0.14, 0.09))
+	var drawn := 0
+	var tries := 0
+	while drawn < needles and tries < needles * 6:
+		tries += 1
+		var v := rng.randf_range(0.02, 0.97)
+		var u := rng.randf()
+		var hw := _pine_halfwidth(v)
+		if absf(u - 0.5) > hw:
+			continue
+		drawn += 1
+		# Color: un píxel verde de la foto, oscurecido hacia verde azulado. Las
+		# agujas de dentro (cerca del tronco y del techo de cada piso) más oscuras.
+		var c := photo.get_pixel(rng.randi() % size, rng.randi() % size)
+		var inner := 1.0 - absf(u - 0.5) / maxf(hw, 0.01)
+		var tier_f := fmod(v * 5.0, 1.0)
+		var light := lerpf(0.95, 0.45, inner * 0.6 + (1.0 - tier_f) * 0.4) * rng.randf_range(0.85, 1.1)
+		var col := Color(c.r * 0.32 * light, (c.g * 0.6 + 0.05) * light, c.b * 0.55 * light + 0.04, 1.0)
+		# Aguja: trazo corto que cae hacia fuera.
+		var side := signf(u - 0.5)
+		var dir := Vector2(side * rng.randf_range(0.6, 1.0), rng.randf_range(0.3, 0.8)).normalized()
+		var length := rng.randf_range(4.0, 9.0)
+		var start := Vector2(u * size, v * size)
+		for k in int(length):
+			var q := start + dir * k
+			var px := int(q.x)
+			var py := int(q.y)
+			if px >= 0 and py >= 0 and px < size and py < size:
+				out.set_pixel(px, py, col)
+	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
+	print("Textura '%s' (%d agujas) generada desde %s" % [name, drawn, PRESETS[name].src])
 
 
 ## Recorta la hoja de una foto: verde = hoja; piel (rojiza) y fondo gris fuera.

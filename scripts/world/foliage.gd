@@ -10,6 +10,7 @@ const TEXTURES := {
 	"hojas": "res://assets/textures/shrub_albedo.png",
 	"morada": "res://assets/textures/purple_albedo.png",
 	"copa": "res://assets/textures/leafcluster_albedo.png",
+	"pino": "res://assets/textures/pine_albedo.png",
 }
 
 ## Tipos: tamaño (ancho, alto), tinte y nº de tarjetas.
@@ -22,8 +23,11 @@ const KINDS := {
 	"arbusto": {"size": Vector2(1.7, 1.4), "tint": Color(0.8, 0.85, 0.75), "cards": 4, "texture": "hojas", "top": true},
 	"seto": {"size": Vector2(1.6, 1.15), "tint": Color(0.9, 0.95, 0.85), "cards": 4, "texture": "hojas", "top": true},
 	# Copa de árbol: dos pisos de tarjetas con racimos de hojas (ver Broadleaf).
-	"copa": {"size": Vector2(3.6, 2.6), "tint": Color(1, 1, 1), "cards": 4, "texture": "copa",
+	"copa": {"size": Vector2(3.6, 2.6), "tint": Color(1, 1, 1), "cards": 8, "texture": "copa",
 		"layers": [[Vector2(3.6, 2.6), 1.55, 0.0], [Vector2(2.7, 2.1), 2.75, 0.45]]},
+	# Pino: 16 planos (2 pisos de 8) con la silueta de abeto; sin tarjeta arriba.
+	"pino": {"size": Vector2(2.8, 4.4), "tint": Color(1, 1, 1), "cards": 8, "texture": "pino", "top": false,
+		"layers": [[Vector2(2.9, 4.4), 0.35, 0.0], [Vector2(2.5, 4.0), 0.75, 0.2]]},
 	"ornamental": {"size": Vector2(1.35, 0.95), "tint": Color(1, 1, 1), "cards": 4, "texture": "morada", "top": true},
 }
 
@@ -110,7 +114,7 @@ static func _mesh(kind: String) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for layer: Array in def.get("layers", [[def.size, 0.0, 0.0]]):
-		_cards(st, layer[0], def.cards, layer[1], layer[2], def.get("top", false) or def.has("layers"))
+		_cards(st, layer[0], def.cards, layer[1], layer[2], def.get("top", def.has("layers")))
 	var mesh := st.commit()
 	_meshes[kind] = mesh
 	return mesh
