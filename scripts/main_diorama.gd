@@ -79,7 +79,7 @@ func _on_new_game() -> void:
 		create_tween().tween_property(fade, "color:a", 0.0, 0.5)
 	GameManager.show_subtitle("", 0.0)
 	_enter_gameplay()
-	GameManager.show_subtitle("Ratón: mirar · WASD: moverse · Shift: correr · Clic izq.: atacar · Clic der.: bloquear · 1-2-3: habilidades · Tab: menú de habilidades · E: hablar", 8.0)
+	GameManager.show_subtitle("WASD: moverse · Shift: correr · Espacio: saltar · Ctrl: agacharse · Alt: esquivar · Clic: atacar (mantener: cargado) · Clic der.: bloquear · Q: cambiar arma · E: hablar", 8.0)
 
 
 func _enter_gameplay() -> void:

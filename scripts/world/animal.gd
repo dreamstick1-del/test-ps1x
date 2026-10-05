@@ -74,6 +74,10 @@ func is_alive() -> bool:
 	return state != State.DEAD
 
 
+func is_unaware() -> bool:
+	return state == State.IDLE or state == State.WANDER
+
+
 # --- Cuerpo ------------------------------------------------------------------
 
 func _build_body() -> void:
@@ -192,7 +196,7 @@ func _physics_process(delta: float) -> void:
 		State.IDLE, State.WANDER:
 			if playing and _def.get("hostile", false) and dist < _def.aggro:
 				state = State.CHASE
-			elif playing and _def.flee > 0.0 and dist < _def.flee:
+			elif playing and _def.flee > 0.0 and dist < _def.flee * (0.4 if _player.get("is_crouching") else 1.0):
 				state = State.FLEE
 				_timer = 2.5
 			elif playing and _def.get("follow", false) and dist > 5.0 and dist < 18.0:

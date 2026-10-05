@@ -12,15 +12,31 @@ Abre la carpeta con Godot 4.3 o superior y pulsa F5. No hacen falta plugins.
 | Acción | Teclado / ratón | Mando |
 |---|---|---|
 | Mirar | Ratón (←/→ girar, RePág/AvPág) | Stick derecho |
-| Moverse | WASD / ↑↓ | Stick izquierdo |
+| Moverse (con inercia) | WASD / ↑↓ | Stick izquierdo |
 | Correr | Shift | L3 |
-| Atacar (combo de 3) | Clic izquierdo / J | X / Cuadrado |
+| Saltar | Espacio | A / Cruz |
+| Agacharse (sigilo) | Ctrl, C | B / Círculo |
+| Esquivar (rodar, invulnerable) | Alt, V | R3 |
+| Atacar (combo) | Clic izquierdo / J | RB / R1 |
+| Ataque cargado | Mantener clic izquierdo / J | Mantener RB |
 | Bloquear / parada | Clic derecho / K | LB / L1 |
-| Habilidades activas | 1, 2, 3 | Y, RB, B |
-| Hablar / comerciar / picar | E, Espacio | A / Cruz |
-| Menú de habilidades | Tab, C | Back / Select |
+| Cambiar de arma | Q / rueda ↓, Z / rueda ↑ | D-pad ↓ |
+| Habilidades activas | 1, 2, 3 | D-pad ←↑→ |
+| Hablar / comerciar / picar | E, F | X / Cuadrado |
+| Menú de habilidades | Tab | Back / Select |
 | Diario (inventario, sociedad, mercado) | I, L | — |
 | Pausa | Esc, P | Start |
+
+### Movimiento y armas
+
+- **Salto** (~1 m, con margen de borde y búfer de pulsación), daño por caída alta.
+- **Agachado**: cápsula baja, ojos a 1 m, 1.5 m/s; bandidos y animales te detectan mucho más tarde.
+  Un golpe agachado a un enemigo desprevenido hace **x2.5** (sigilo).
+- **Correr** 5.8 m/s gastando aguante; ataque en carrera con embestida; ataque en el aire al caer.
+- **Esquiva** (~2.7 m) con 0.3 s de invulnerabilidad.
+- **Armas** (forja de Martin): espada, espada de acero, hacha, maza, lanza y daga, cada una con su
+  combo, alcance, velocidad y aturdimiento. Hacha y maza rompen la guardia de los bandidos.
+  **Escudo**: bloquea más daño, más ángulo y menos aguante. Definidas en `scripts/combat/weapons.gd`.
 
 ## El mapa (96x96 m)
 

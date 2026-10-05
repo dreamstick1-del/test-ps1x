@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/combat/player_combat.gd" id="5_combat"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_henry"]
+resource_local_to_scene = true
 radius = 0.3
 height = 1.8
 

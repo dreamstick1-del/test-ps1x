@@ -9,7 +9,7 @@ extends CharacterBody3D
 
 signal killed(bandit: Bandit)
 
-enum State { IDLE, CHASE, ATTACK, STAGGER, DEAD }
+enum State { IDLE, CHASE, ATTACK, STAGGER, DEAD, BLOCK }
 
 @export var display_name := "Bandido"
 @export var model_path := "res://assets/characters/Character_05.fbx"
@@ -23,6 +23,8 @@ enum State { IDLE, CHASE, ATTACK, STAGGER, DEAD }
 @export var sight_range := 14.0
 @export var xp_reward := 25
 @export var body_scale := 1.0
+## Probabilidad de cubrirse cuando Henry está cerca y no le toca atacar.
+@export var block_chance := 0.3
 
 var hit_color := Color(0.55, 0.04, 0.04)
 var stats: CombatStats
@@ -67,6 +69,11 @@ func is_alive() -> bool:
 	return state != State.DEAD
 
 
+## Todavía no ha visto a Henry (para el ataque sigiloso).
+func is_unaware() -> bool:
+	return state == State.IDLE
+
+
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= 20.0 * delta
@@ -92,12 +99,18 @@ func _physics_process(delta: float) -> void:
 		match state:
 			State.IDLE:
 				model.play("idle")
-				if dist < sight_range:
+				# Agachado, Henry pasa desapercibido hasta estar mucho más cerca.
+				var sight := sight_range * (0.35 if _player.get("is_crouching") else 1.0)
+				if dist < sight:
 					state = State.CHASE
 			State.CHASE:
 				_face(to, delta, 8.0)
 				if dist <= attack_range and _cooldown <= 0.0:
 					_start_attack()
+				elif dist <= attack_range + 0.8 and _cooldown > 0.3 and randf() < block_chance * delta * 2.0:
+					state = State.BLOCK
+					_timer = randf_range(0.6, 1.1)
+					model.play_once("block")
 				elif dist > attack_range * 0.8:
 					desired = _steer(to / dist, delta) * move_speed * (1.25 if dist > 5.0 else 1.0)
 					model.play("run" if dist > 5.0 else "walk")
@@ -113,6 +126,10 @@ func _physics_process(delta: float) -> void:
 					state = State.CHASE
 					_cooldown = randf_range(attack_cooldown.x, attack_cooldown.y)
 			State.STAGGER:
+				if _timer <= 0.0:
+					state = State.CHASE
+			State.BLOCK:
+				_face(to, delta, 6.0)
 				if _timer <= 0.0:
 					state = State.CHASE
 
@@ -140,6 +157,24 @@ func _try_hit(to: Vector3, dist: float) -> void:
 func receive_hit(hit: Dictionary) -> void:
 	if state == State.DEAD:
 		return
+	if state == State.BLOCK:
+		var from: Node3D = hit.source
+		var to := from.global_position - global_position
+		to.y = 0.0
+		var facing := (-global_transform.basis.z).dot(to.normalized()) > 0.3
+		if facing:
+			if hit.get("heavy", false) or hit.get("guard_break", false):
+				GameManager.show_message("¡GUARDIA ROTA!", Color(1.0, 0.75, 0.3), 0.8)
+				CombatFX.burst(get_parent(), global_position + Vector3(0, 1.3, 0), Color(1.0, 0.85, 0.4), 14, 4.0)
+				stats.take_damage(hit.damage * 0.6)
+				if state != State.DEAD:
+					stagger(1.4)
+				return
+			GameManager.show_message("Bloqueado", Color(0.8, 0.8, 0.85), 0.5)
+			CombatFX.burst(get_parent(), global_position + Vector3(0, 1.3, 0), Color(1.0, 0.95, 0.7), 6, 2.5)
+			stats.take_damage(hit.damage * 0.15)
+			_push = hit.knockback * 0.5
+			return
 	stats.take_damage(hit.damage)
 	if state == State.DEAD:
 		return

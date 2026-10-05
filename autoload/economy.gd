@@ -34,11 +34,12 @@ const GOODS := {
 	"herramientas": {"name": "Herramientas", "base": 20.0},
 }
 
+## Equipo no-arma. Las armas salen de Weapons.DEFS (ver equipment_def()).
 const EQUIPMENT := {
-	"espada_acero": {"name": "Espada de acero", "price": 120, "slot": "weapon", "damage": 1.35,
-		"desc": "Acero de Kutná Hora: +35% de daño."},
 	"gambeson": {"name": "Gambesón acolchado", "price": 80, "slot": "armor", "armor": 0.25,
 		"desc": "Capas de lino cosidas: -25% de daño recibido."},
+	"escudo": {"name": "Escudo de madera", "price": 60, "slot": "shield",
+		"desc": "Bloquea más daño, gasta menos aguante y cubre más ángulo."},
 }
 
 ## Tiendas: qué bienes manejan y qué oficio pone (y recibe) el dinero.
@@ -46,7 +47,7 @@ const SHOPS := {
 	"mercado": {"name": "Puesto del mercado", "owner": "comerciante",
 		"goods": ["pan", "huevos", "leche", "carne", "cerveza", "lana", "pieles"]},
 	"herreria": {"name": "Herrería de Martin", "owner": "herrero",
-		"goods": ["herramientas", "carbon", "plata"], "equipment": ["espada_acero", "gambeson"]},
+		"goods": ["herramientas", "carbon", "plata"], "equipment": ["espada_acero", "hacha", "maza", "lanza", "daga", "escudo", "gambeson"]},
 	"molino": {"name": "Molino del río", "owner": "molinero",
 		"goods": ["trigo", "harina", "pan"]},
 }
@@ -94,7 +95,7 @@ var event_log: Array[String] = []
 var money := 25
 var inventory := {}
 var owned_equipment: Array[String] = []
-var equipped := {"weapon": "", "armor": ""}
+var equipped := {"weapon": "espada", "armor": "", "shield": ""}
 var reputation := 0.0 ## -100..100
 
 var _rng := RandomNumberGenerator.new()
@@ -119,8 +120,8 @@ func reset() -> void:
 	hour = 8.0
 	money = 25
 	inventory = {"pan": 2}
-	owned_equipment = []
-	equipped = {"weapon": "", "armor": ""}
+	owned_equipment = ["espada"]
+	equipped = {"weapon": "espada", "armor": "", "shield": ""}
 	reputation = 0.0
 	safety = 1.0
 	harvest = 1.0
@@ -235,8 +236,36 @@ func sell(shop: String, good: String) -> String:
 	return ""
 
 
+## Definición de cualquier equipo: armas (Weapons.DEFS) o el resto (EQUIPMENT).
+func equipment_def(id: String) -> Dictionary:
+	if Weapons.DEFS.has(id):
+		var w: Dictionary = Weapons.DEFS[id].duplicate()
+		w["slot"] = "weapon"
+		return w
+	return EQUIPMENT[id]
+
+
+func owned_weapons() -> Array[String]:
+	var out: Array[String] = []
+	for id: String in owned_equipment:
+		if Weapons.DEFS.has(id):
+			out.append(id)
+	return out
+
+
+## Cambia a la siguiente arma que se tenga (dir = 1 o -1).
+func cycle_weapon(dir: int) -> String:
+	var list := owned_weapons()
+	if list.size() < 2:
+		return equipped.weapon
+	var i := list.find(equipped.weapon)
+	equipped.weapon = list[posmod(i + dir, list.size())]
+	player_changed.emit()
+	return equipped.weapon
+
+
 func buy_equipment(shop: String, id: String) -> String:
-	var def: Dictionary = EQUIPMENT[id]
+	var def: Dictionary = equipment_def(id)
 	if id in owned_equipment:
 		return "Ya lo tienes."
 	var cost := ceili(def.price * (1.0 - reputation / 400.0))
@@ -251,7 +280,7 @@ func buy_equipment(shop: String, id: String) -> String:
 
 
 func equipment_price(id: String) -> int:
-	return ceili(EQUIPMENT[id].price * (1.0 - reputation / 400.0))
+	return ceili(equipment_def(id).price * (1.0 - reputation / 400.0))
 
 
 func _pay_owner(shop: String, amount: float) -> void:
@@ -290,8 +319,8 @@ func use_item(good: String, player: Node) -> String:
 	return GOODS[good].name
 
 
-func weapon_damage() -> float:
-	return EQUIPMENT[equipped.weapon].damage if equipped.weapon != "" else 1.0
+func has_shield() -> bool:
+	return equipped.shield != ""
 
 
 func armor_reduction() -> float:

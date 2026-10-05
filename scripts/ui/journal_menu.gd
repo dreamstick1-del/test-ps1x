@@ -78,7 +78,9 @@ func _build() -> void:
 
 func _inventory_page() -> void:
 	_line("%s   ·   Bolsa: %d groschen   ·   Reputación: %+d" % [Economy.clock_text(), Economy.money, roundi(Economy.reputation)], PS1Theme.TEXT)
-	var weapon: String = Economy.EQUIPMENT[Economy.equipped.weapon].name if Economy.equipped.weapon != "" else "Espada de Martin"
+	var weapon: String = Weapons.get_def(Economy.equipped.weapon).name
+	if Economy.has_shield():
+		weapon += " + escudo"
 	var armor: String = Economy.EQUIPMENT[Economy.equipped.armor].name if Economy.equipped.armor != "" else "Ropa de lino"
 	_line("Arma: %s   ·   Armadura: %s" % [weapon, armor], Color(0.85, 0.9, 1.0))
 	_line("— Objetos —", PS1Theme.TEXT_DIM)

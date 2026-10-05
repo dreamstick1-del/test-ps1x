@@ -173,6 +173,10 @@ func _build_animations() -> void:
 		{"arm_r": 0.9, "elbow_r": 0.15, "spine": 0.3, "leg_l": 0.35, "knee_r": 0.3},
 		{"arm_r": 0.5, "elbow_r": 0.3, "spine": 0.15, "leg_l": 0.2},
 	], false))
+	# block: arma cruzada delante del cuerpo, un poco agachado.
+	lib.add_animation("block", _make_anim(0.3, [
+		{"arm_r": 1.3, "elbow_r": 1.5, "arm_l": 0.9, "elbow_l": 1.3, "spine": 0.12, "knee_l": 0.25, "knee_r": 0.25},
+	], false))
 	lib.add_animation("hit", _make_anim(0.4, [
 		{"spine": -0.3, "head": -0.25, "arm_l": 0.4, "arm_r": 0.4, "knee_l": 0.2},
 		{"spine": -0.12, "head": -0.1},

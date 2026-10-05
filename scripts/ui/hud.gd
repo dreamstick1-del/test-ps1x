@@ -149,6 +149,7 @@ func _draw_gameplay() -> void:
 		ci.draw_rect(Rect2(155, 119, 3, 2), c)
 		ci.draw_rect(Rect2(162, 119, 3, 2), c)
 		_draw_skill_slots(font)
+		_draw_weapon_state(font)
 
 	if _focus_time > 0.0 and is_instance_valid(_focused_enemy) and "stats" in _focused_enemy:
 		var stats: CombatStats = _focused_enemy.stats
@@ -158,6 +159,27 @@ func _draw_gameplay() -> void:
 		ci.draw_rect(Rect2(x - 1, 15, 102, 6), Color.BLACK)
 		ci.draw_rect(Rect2(x, 16, 100, 4), Color(0.3, 0.05, 0.05))
 		ci.draw_rect(Rect2(x, 16, floorf(100 * ratio), 4), Color(0.85, 0.15, 0.1))
+
+
+## Arma equipada (abajo a la derecha), barra de carga y estado agachado.
+func _draw_weapon_state(font: Font) -> void:
+	var ci := _gameplay_root
+	var player := get_tree().get_first_node_in_group("player")
+	var w := Weapons.get_def(Economy.equipped.weapon)
+	var label: String = w.name + ("  + escudo" if Economy.has_shield() else "")
+	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	_text(Vector2(314 - width, 228), label, Color(0.9, 0.85, 0.7), font)
+	if Economy.owned_weapons().size() > 1:
+		_text(Vector2(314 - 46, 218), "Q: cambiar", PS1Theme.TEXT_DIM, font)
+	if player == null:
+		return
+	var combat: PlayerCombat = player.combat
+	if combat.is_charging:
+		var f: float = combat._charge / PlayerCombat.CHARGE_FULL
+		ci.draw_rect(Rect2(135, 140, 50, 4), Color(0, 0, 0, 0.7))
+		ci.draw_rect(Rect2(135, 140, floorf(50 * f), 4), Color(1.0, 0.75, 0.3) if f < 0.99 else Color(1.0, 0.35, 0.2))
+	if player.is_crouching:
+		_text(Vector2(140, 200), "AGACHADO", Color(0.75, 0.65, 0.95), font)
 
 
 func _draw_skill_slots(font: Font) -> void:

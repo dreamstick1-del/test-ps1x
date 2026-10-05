@@ -103,7 +103,7 @@ func _refresh() -> void:
 	for row: Dictionary in _rows:
 		var text := ""
 		if row.kind == "equipment":
-			var eq: Dictionary = Economy.EQUIPMENT[row.id]
+			var eq: Dictionary = Economy.equipment_def(row.id)
 			var owned: bool = row.id in Economy.owned_equipment
 			text = "%-18s %4s gr   %s" % [eq.name, Economy.equipment_price(row.id), "TUYO" if owned else eq.desc.substr(0, 14)]
 		else:
@@ -125,7 +125,7 @@ func _act(kind: String, id: String) -> void:
 	if kind == "equipment":
 		err = Economy.buy_equipment(_shop, id)
 		if err == "":
-			GameManager.show_message("%s equipado" % Economy.EQUIPMENT[id].name, Color(0.7, 1.0, 0.6), 1.5)
+			GameManager.show_message("%s equipado" % Economy.equipment_def(id).name, Color(0.7, 1.0, 0.6), 1.5)
 	elif _mode == "comprar":
 		err = Economy.buy(_shop, id)
 	else:

@@ -470,7 +470,8 @@ func _build_villagers() -> void:
 		"¡Henry! Por fin apareces. ¿Dónde te habías metido?",
 		"Esa espada que llevas la forjé yo. A ver si sabes usarla.",
 		"Ve al muñeco de paja de ahí al lado y dale unos buenos tajos.",
-		"Clic izquierdo para golpear, clic derecho para cubrirte. Si te cubres justo a tiempo, desarmas al rival.",
+		"Clic izquierdo para golpear; si lo mantienes, cargas un golpe más fuerte. Clic derecho para cubrirte: si te cubres justo a tiempo, desarmas al rival.",
+		"Si quieres otra arma, te vendo hachas, mazas, lanzas, dagas y escudos. Cada una pelea a su manera.",
 	])
 	_villager("Theresa", Vector3(-1.2, 0, 2.2), PI * 0.85, {
 		"model": "res://assets/characters/Character_34_Female.fbx", "outfit": "aldeana",

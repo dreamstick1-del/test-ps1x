@@ -30,6 +30,45 @@ static func build(kind: String) -> Node3D:
 		"hammer":
 			_part(root, Vector3(0.04, 0.55, 0.04), Vector3(0, 0.18, 0), WOOD)
 			_part(root, Vector3(0.2, 0.09, 0.09), Vector3(0, 0.45, 0), DARK_STEEL)
+		"sword_steel":
+			_part(root, Vector3(0.035, 0.2, 0.035), Vector3(0, -0.01, 0), Color(0.18, 0.1, 0.06))
+			_part(root, Vector3(0.06, 0.06, 0.06), Vector3(0, -0.13, 0), DARK_STEEL)
+			_part(root, Vector3(0.28, 0.04, 0.05), Vector3(0, 0.11, 0), DARK_STEEL)
+			_part(root, Vector3(0.05, 0.82, 0.012), Vector3(0, 0.54, 0), Color(0.82, 0.84, 0.88))
+			_part(root, Vector3(0.012, 0.7, 0.018), Vector3(0, 0.48, 0), STEEL)
+			var tip2 := PrismMesh.new()
+			tip2.size = Vector3(0.05, 0.12, 0.012)
+			_mesh(root, tip2, Vector3(0, 1.01, 0), Color(0.82, 0.84, 0.88))
+		"mace":
+			_part(root, Vector3(0.04, 0.58, 0.04), Vector3(0, 0.19, 0), WOOD)
+			_part(root, Vector3(0.05, 0.08, 0.05), Vector3(0, -0.08, 0), LEATHER)
+			_part(root, Vector3(0.13, 0.15, 0.13), Vector3(0, 0.52, 0), DARK_STEEL)
+			for a in 4:
+				var flange := _part(root, Vector3(0.03, 0.15, 0.09), Vector3(0, 0.52, 0), STEEL)
+				flange.rotation.y = a * PI / 4
+				flange.position += Vector3(cos(a * PI / 4), 0, sin(a * PI / 4)) * 0.0
+		"spear":
+			_part(root, Vector3(0.035, 1.7, 0.035), Vector3(0, 0.45, 0), WOOD)
+			_part(root, Vector3(0.05, 0.06, 0.05), Vector3(0, 1.3, 0), DARK_STEEL)
+			var head := PrismMesh.new()
+			head.size = Vector3(0.07, 0.24, 0.015)
+			_mesh(root, head, Vector3(0, 1.45, 0), STEEL)
+		"dagger":
+			_part(root, Vector3(0.03, 0.11, 0.03), Vector3(0, 0, 0), LEATHER)
+			_part(root, Vector3(0.12, 0.025, 0.04), Vector3(0, 0.065, 0), BRASS)
+			_part(root, Vector3(0.04, 0.26, 0.01), Vector3(0, 0.2, 0), STEEL)
+			var tip3 := PrismMesh.new()
+			tip3.size = Vector3(0.04, 0.06, 0.01)
+			_mesh(root, tip3, Vector3(0, 0.36, 0), STEEL)
+		"shield":
+			# Escudo redondo de tablas con umbo de hierro; origen en el asa, mira a +Z.
+			for i in 5:
+				_part(root, Vector3(0.11, 0.56 - absf(i - 2) * 0.09, 0.03), Vector3(-0.22 + i * 0.11, 0, 0),
+					WOOD.lightened(0.08 * (i % 2)))
+			_part(root, Vector3(0.56, 0.04, 0.035), Vector3(0, 0.2, 0.002), DARK_STEEL)
+			_part(root, Vector3(0.56, 0.04, 0.035), Vector3(0, -0.2, 0.002), DARK_STEEL)
+			_part(root, Vector3(0.12, 0.12, 0.06), Vector3(0, 0, 0.03), STEEL)
+			_part(root, Vector3(0.2, 0.2, 0.01), Vector3(0, 0, 0.02), Color(0.7, 0.14, 0.1))
 	return root
 
 
