@@ -38,6 +38,19 @@ Abre la carpeta con Godot 4.3 o superior y pulsa F5. No hacen falta plugins.
   combo, alcance, velocidad y aturdimiento. Hacha y maza rompen la guardia de los bandidos.
   **Escudo**: bloquea más daño, más ángulo y menos aguante. Definidas en `scripts/combat/weapons.gd`.
 
+### Bandidos y aldeanos
+
+- **Bandidos**: te provocan al verte, te rodean de lado mientras recuperan el aliento, retroceden si
+  te pegas a ellos y alternan tres ataques con destello de aviso: tajo, estocada (con paso adelante,
+  más alcance) y golpe pesado por encima de la cabeza (destello rojo; bloquearlo gasta casi el doble
+  de aguante, mejor esquivarlo o pararlo). Los de hacha y martillo prefieren el pesado; los de espada,
+  la estocada. Al morir caen de rodillas y de espaldas.
+- **Aldeanos**: trabajan según su oficio (el herrero y el minero martillean, los campesinos cavan,
+  el cura reza, la mercadera pregona, los guardias montan guardia), miran alrededor, se giran y te
+  saludan al acercarte, se encogen de miedo durante el asalto y lo celebran al acabar.
+- Las animaciones (`scripts/ps1_rigged_character.gd`) se generan por código sobre el rig Mixamo,
+  a saltos (interpolación NEAREST) como en PS1.
+
 ## El mapa (96x96 m)
 
 ```

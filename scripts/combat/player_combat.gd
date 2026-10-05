@@ -339,6 +339,8 @@ func receive_hit(hit: Dictionary) -> void:
 			return
 		var shield := Economy.has_shield()
 		var cost := damage * Skills.block_stamina_factor() * (Weapons.SHIELD.stamina_factor if shield else 1.0)
+		if hit.get("heavy", false):
+			cost *= 1.8 # Los golpes pesados se esquivan o se paran, no se aguantan.
 		if _stats.stamina >= cost:
 			_stats.drain_stamina(cost)
 			var absorb := minf(Skills.block_absorb() + (Weapons.SHIELD.absorb_bonus if shield else 0.0), 0.97)

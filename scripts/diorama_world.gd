@@ -497,7 +497,7 @@ func _build_villagers() -> void:
 	])
 	_villager("Kuneš", Vector3(-9.7, 0, 4.4), -PI / 2, {
 		"model": "res://assets/characters/Character_05.fbx", "outfit": "campesino",
-	}, {"profession": "campesino"}, [
+	}, {"profession": "campesino", "work": "look_around"}, [
 		"¿Qué miras, chaval? ¿Nunca has visto a un hombre descansar?",
 		"Si ves a mi mujer, yo no estoy aquí.",
 	])
@@ -548,6 +548,7 @@ func _villager(display_name: String, pos: Vector3, rot_y: float, look: Dictionar
 	v.shop = role.get("shop", "")
 	v.profession = role.get("profession", "")
 	v.talk_until_stage = role.get("talk_until_stage", -1)
+	v.work_anim = role.get("work", "")
 	v.name = display_name.replace(" ", "_")
 	v.display_name = display_name
 	v.lines = PackedStringArray(lines)

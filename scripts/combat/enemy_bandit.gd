@@ -1,15 +1,34 @@
 class_name Bandit
 extends CharacterBody3D
 ## Bandido con IA sencilla de máquina de estados:
-##   IDLE -> CHASE (te ve) -> ATTACK (amago visible, golpe a los 0,5 s) -> CHASE
-##   STAGGER: aturdido tras una parada o un golpe fuerte.
-##   DEAD: cae de espaldas, da experiencia y desaparece.
-## El amago (brazo arriba + destello amarillo) es la señal para bloquear o
-## hacer una parada.
+##   IDLE -> TAUNT (te ve y te provoca) -> CHASE -> ATTACK -> CHASE
+##   CHASE: se acerca y, mientras recupera el aliento, te rodea de lado o
+##          retrocede para no quedarse pegado.
+##   ATTACK: tres ataques (ver ATTACKS) con amago visible y destello de aviso.
+##           El pesado (destello rojo) gasta mucho aguante si lo bloqueas:
+##           mejor esquivarlo o hacer una parada.
+##   BLOCK: se cubre. STAGGER: aturdido. DEAD: cae de rodillas y de espaldas.
 
 signal killed(bandit: Bandit)
 
-enum State { IDLE, CHASE, ATTACK, STAGGER, DEAD, BLOCK }
+enum State { IDLE, CHASE, ATTACK, STAGGER, DEAD, BLOCK, TAUNT }
+
+## anim, duración, instante del golpe (s desde el inicio), daño x, alcance extra,
+## color del aviso, golpe pesado.
+const ATTACKS := {
+	"tajo": {"anim": "attack", "time": 0.95, "hit_at": 0.5, "mult": 1.0, "reach": 0.0,
+		"flash": Color(1.6, 1.4, 0.6), "heavy": false},
+	"pesado": {"anim": "attack_heavy", "time": 1.4, "hit_at": 0.72, "mult": 1.7, "reach": 0.25,
+		"flash": Color(2.0, 0.7, 0.4), "heavy": true},
+	"estocada": {"anim": "attack_thrust", "time": 1.05, "hit_at": 0.45, "mult": 0.85, "reach": 0.8,
+		"flash": Color(1.6, 1.4, 0.6), "heavy": false},
+}
+## Preferencias de ataque según el arma: [tajo, pesado, estocada].
+const ATTACK_WEIGHTS := {
+	"sword": [0.5, 0.15, 0.35],
+	"axe": [0.55, 0.35, 0.1],
+	"hammer": [0.45, 0.45, 0.1],
+}
 
 @export var display_name := "Bandido"
 @export var model_path := "res://assets/characters/Character_05.fbx"
@@ -39,6 +58,9 @@ var _stuck_time := 0.0
 var _avoid_time := 0.0
 var _avoid_side := 1.0
 var _player: Node3D
+var _attack: Dictionary = ATTACKS["tajo"]
+var _strafe_dir := 1.0
+var _strafe_t := 0.0
 
 
 func _ready() -> void:
@@ -102,6 +124,15 @@ func _physics_process(delta: float) -> void:
 				# Agachado, Henry pasa desapercibido hasta estar mucho más cerca.
 				var sight := sight_range * (0.35 if _player.get("is_crouching") else 1.0)
 				if dist < sight:
+					if dist > 4.0 and randf() < 0.6:
+						state = State.TAUNT
+						_timer = 1.0
+						model.play_once("taunt")
+					else:
+						state = State.CHASE
+			State.TAUNT:
+				_face(to, delta, 6.0)
+				if _timer <= 0.0 or dist < 2.5:
 					state = State.CHASE
 			State.CHASE:
 				_face(to, delta, 8.0)
@@ -111,15 +142,22 @@ func _physics_process(delta: float) -> void:
 					state = State.BLOCK
 					_timer = randf_range(0.6, 1.1)
 					model.play_once("block")
-				elif dist > attack_range * 0.8:
+				elif dist > attack_range + 1.4 or (dist > attack_range * 0.8 and _cooldown <= 0.0):
 					desired = _steer(to / dist, delta) * move_speed * (1.25 if dist > 5.0 else 1.0)
 					model.play("run" if dist > 5.0 else "walk")
+				elif dist < attack_range * 0.6:
+					# Demasiado cerca: un paso atrás.
+					desired = -to / dist * move_speed * 0.5
+					model.play("walk_back")
 				else:
-					model.play("idle")
+					desired = _circle(to / dist, delta)
 			State.ATTACK:
-				if _timer > 0.5:
+				var elapsed: float = _attack.time - _timer
+				if _attack.anim == "attack_thrust" and elapsed > 0.38 and elapsed < 0.5:
+					desired = to / maxf(dist, 0.01) * 3.0 # Paso adelante de la estocada.
+				if elapsed < _attack.hit_at - 0.15:
 					_face(to, delta, 4.0) # Corrige la puntería durante el amago.
-				if not _hit_done and _timer <= 0.45:
+				if not _hit_done and elapsed >= _attack.hit_at:
 					_hit_done = true
 					_try_hit(to, dist)
 				if _timer <= 0.0:
@@ -142,16 +180,39 @@ func _physics_process(delta: float) -> void:
 
 func _start_attack() -> void:
 	state = State.ATTACK
-	_timer = 0.95
+	var weights: Array = ATTACK_WEIGHTS.get(weapon, ATTACK_WEIGHTS["sword"])
+	var roll := randf()
+	var key := "estocada"
+	if roll < weights[0]:
+		key = "tajo"
+	elif roll < weights[0] + weights[1]:
+		key = "pesado"
+	_attack = ATTACKS[key]
+	_timer = _attack.time
 	_hit_done = false
-	model.play_once("attack")
-	model.flash(Color(1.6, 1.4, 0.6), 0.15) # Aviso: ¡va a golpear!
+	model.play_once(_attack.anim)
+	model.flash(_attack.flash, 0.3 if _attack.heavy else 0.15) # Aviso: ¡va a golpear!
 
 
 func _try_hit(to: Vector3, dist: float) -> void:
 	var fwd := -global_transform.basis.z
-	if dist <= attack_range + 0.5 and dist > 0.01 and fwd.dot(to / dist) > 0.5:
-		_player.receive_hit({"damage": damage, "knockback": to / dist * 2.5, "source": self})
+	var reach: float = attack_range + 0.5 + _attack.reach
+	if dist <= reach and dist > 0.01 and fwd.dot(to / dist) > 0.5:
+		_player.receive_hit({"damage": damage * _attack.mult, "knockback": to / dist * (4.5 if _attack.heavy else 2.5),
+			"heavy": _attack.heavy, "source": self})
+
+
+## Rodea a Henry de lado mientras espera para atacar; cambia de sentido de vez en cuando.
+func _circle(dir: Vector3, delta: float) -> Vector3:
+	_strafe_t -= delta
+	if _strafe_t <= 0.0:
+		_strafe_t = randf_range(0.8, 1.8)
+		_strafe_dir = 1.0 if randf() < 0.5 else -1.0
+	if get_real_velocity().length() < 0.2 and _strafe_t < 0.5:
+		_strafe_dir = -_strafe_dir # Contra una pared: al otro lado.
+		_strafe_t = 1.0
+	model.play("strafe_r" if _strafe_dir > 0.0 else "strafe_l")
+	return dir.cross(Vector3.UP) * _strafe_dir * move_speed * 0.5
 
 
 func receive_hit(hit: Dictionary) -> void:
@@ -197,8 +258,9 @@ func _die() -> void:
 	state = State.DEAD
 	remove_from_group("damageable")
 	collision_layer = 0
-	model.play_once("hit")
+	model.play_once("death")
 	var tween := create_tween()
+	tween.tween_interval(0.55)
 	tween.tween_property(model, "rotation:x", PI / 2, 0.45).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tween.tween_interval(8.0)
 	tween.tween_property(model, "position:y", -0.6, 2.0)

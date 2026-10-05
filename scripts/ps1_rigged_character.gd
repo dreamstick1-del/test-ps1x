@@ -4,7 +4,8 @@ extends Node3D
 ##  - textura repintada de estilo medieval (ver CharacterRepaint),
 ##  - material PS1 (jitter de vértices + texturas afines + Nearest),
 ##  - animaciones generadas por código sobre los huesos Mixamo con
-##    interpolación NEAREST (idle, walk, run, talk, attack, hit),
+##    interpolación NEAREST (ver ANIMS más abajo: andar, correr, atacar,
+##    bloquear, morir, oficios, saludar...),
 ##  - arma opcional en la mano derecha.
 ## Expone la misma API que PS1Character: play(nombre, velocidad).
 
@@ -57,14 +58,16 @@ func _ready() -> void:
 
 
 func play(anim_name: String, speed := 1.0) -> void:
+	if not animation_player.has_animation(anim_name):
+		anim_name = "idle"
 	animation_player.speed_scale = speed
 	if animation_player.current_animation != anim_name:
 		animation_player.play(anim_name)
 
 
 ## Reproduce desde el principio (ataques, golpes recibidos).
-func play_once(anim_name: String) -> void:
-	animation_player.speed_scale = 1.0
+func play_once(anim_name: String, speed := 1.0) -> void:
+	animation_player.speed_scale = speed
 	animation_player.stop()
 	animation_player.play(anim_name)
 
@@ -177,6 +180,110 @@ func _build_animations() -> void:
 	lib.add_animation("block", _make_anim(0.3, [
 		{"arm_r": 1.3, "elbow_r": 1.5, "arm_l": 0.9, "elbow_l": 1.3, "spine": 0.12, "knee_l": 0.25, "knee_r": 0.25},
 	], false))
+	# attack_heavy: golpe por encima de la cabeza con amago largo (impacto en 0,8 s).
+	lib.add_animation("attack_heavy", _make_anim(1.3, [
+		{"arm_r": 2.4, "elbow_r": 1.4, "arm_l": 2.2, "elbow_l": 1.4, "spine": -0.1, "knee_l": 0.2, "knee_r": 0.2},
+		{"arm_r": 2.9, "elbow_r": 1.6, "arm_l": 2.7, "elbow_l": 1.6, "spine": -0.25, "head": -0.1},
+		{"arm_r": 2.9, "elbow_r": 1.6, "arm_l": 2.7, "elbow_l": 1.6, "spine": -0.28, "head": -0.12, "bob": 0.02},
+		{"arm_r": 0.6, "elbow_r": 0.1, "arm_l": 0.5, "elbow_l": 0.2, "spine": 0.45, "leg_l": 0.45, "knee_r": 0.5, "bob": -0.08},
+		{"arm_r": 0.5, "elbow_r": 0.2, "arm_l": 0.4, "spine": 0.35, "leg_l": 0.4, "knee_r": 0.45, "bob": -0.06},
+		{"arm_r": 0.4, "elbow_r": 0.3, "spine": 0.12, "leg_l": 0.15},
+	], false))
+	# attack_thrust: estocada con paso adelante (impacto en 0,4 s).
+	lib.add_animation("attack_thrust", _make_anim(1.0, [
+		{"arm_r": 0.8, "elbow_r": 1.8, "twist": 0.35, "spine": -0.05, "leg_r": -0.2},
+		{"arm_r": 0.7, "elbow_r": 2.0, "twist": 0.45, "spine": -0.1, "leg_r": -0.25},
+		{"arm_r": 1.5, "elbow_r": 0.1, "twist": -0.25, "spine": 0.25, "leg_l": 0.55, "knee_r": 0.4, "bob": -0.05},
+		{"arm_r": 1.4, "elbow_r": 0.2, "twist": -0.2, "spine": 0.2, "leg_l": 0.5, "knee_r": 0.35, "bob": -0.04},
+		{"arm_r": 0.6, "elbow_r": 0.6, "spine": 0.05, "leg_l": 0.1},
+	], false))
+	# Pasos laterales (rodear al rival) y hacia atrás.
+	for side in [["strafe_l", 1.0], ["strafe_r", -1.0]]:
+		var k: float = side[1]
+		var guard := {"arm_r": 0.9, "elbow_r": 1.0, "arm_l": 0.5, "elbow_l": 1.2, "spine": 0.12, "twist": 0.15 * k}
+		lib.add_animation(side[0], _make_anim(0.6, [
+			_merge(guard, {"side_l": 0.35 * k if k > 0 else 0.05, "side_r": 0.35 * -k if k < 0 else 0.05, "knee_l": 0.2, "knee_r": 0.2}),
+			_merge(guard, {"side_l": 0.05, "side_r": 0.05, "knee_l": 0.35, "knee_r": 0.35, "bob": -0.03}),
+			_merge(guard, {"side_l": 0.25 * -k if k < 0 else 0.0, "side_r": 0.25 * k if k > 0 else 0.0, "knee_l": 0.2, "knee_r": 0.2}),
+			_merge(guard, {"knee_l": 0.3, "knee_r": 0.3, "bob": -0.02}),
+		]))
+	lib.add_animation("walk_back", _make_anim(0.72, [
+		{"leg_l": -0.3, "leg_r": 0.3, "knee_l": 0.5, "arm_r": 0.9, "elbow_r": 1.0, "spine": 0.1},
+		{"leg_l": 0.0, "leg_r": 0.05, "knee_l": 0.2, "arm_r": 0.9, "elbow_r": 1.0, "spine": 0.1, "bob": -0.02},
+		{"leg_l": 0.3, "leg_r": -0.3, "knee_r": 0.5, "arm_r": 0.9, "elbow_r": 1.0, "spine": 0.1},
+		{"leg_l": 0.05, "leg_r": 0.0, "knee_r": 0.2, "arm_r": 0.9, "elbow_r": 1.0, "spine": 0.1, "bob": -0.02},
+	]))
+	# taunt: provoca al rival levantando el arma.
+	lib.add_animation("taunt", _make_anim(1.0, [
+		{"arm_r": 2.6, "elbow_r": 0.4, "out_r": 0.3, "spine": -0.15, "head": -0.15, "arm_l": 0.3, "out_l": 0.5},
+		{"arm_r": 2.9, "elbow_r": 0.2, "out_r": 0.2, "spine": -0.2, "head": -0.2, "arm_l": 0.3, "out_l": 0.6, "bob": 0.02},
+		{"arm_r": 2.5, "elbow_r": 0.5, "out_r": 0.3, "spine": -0.15, "head": -0.15, "arm_l": 0.3, "out_l": 0.5},
+		{"arm_r": 1.0, "elbow_r": 1.0, "spine": 0.05},
+	], false))
+	# death: se le doblan las rodillas (luego el script lo tumba hacia atrás).
+	lib.add_animation("death", _make_anim(0.6, [
+		{"spine": -0.35, "head": -0.3, "arm_l": 0.5, "arm_r": 0.6, "out_l": 0.4, "out_r": 0.4, "knee_l": 0.3},
+		{"spine": 0.3, "head": 0.4, "arm_l": 0.2, "arm_r": 0.2, "leg_l": 0.6, "leg_r": 0.5, "knee_l": 1.2, "knee_r": 1.3, "bob": -0.25},
+		{"spine": 0.45, "head": 0.6, "arm_l": 0.0, "arm_r": 0.1, "out_l": 0.2, "out_r": 0.2, "leg_l": 0.9, "leg_r": 0.9,
+			"knee_l": 1.8, "knee_r": 1.8, "bob": -0.45},
+	], false))
+	# --- Vida del pueblo ---
+	lib.add_animation("wave", _make_anim(1.2, [
+		{"arm_r": 2.7, "out_r": 0.5, "elbow_r": 0.5, "head": -0.05},
+		{"arm_r": 2.7, "out_r": 0.2, "elbow_r": 1.0, "head": -0.05},
+		{"arm_r": 2.7, "out_r": 0.5, "elbow_r": 0.5, "head": -0.05},
+		{"arm_r": 2.7, "out_r": 0.2, "elbow_r": 1.0, "head": -0.05},
+		{"arm_r": 0.3, "elbow_r": 0.4},
+	], false))
+	lib.add_animation("look_around", _make_anim(3.0, [
+		{"head_turn": 0.0},
+		{"head_turn": 0.6, "twist": 0.1},
+		{"head_turn": 0.6, "twist": 0.1, "head": 0.05},
+		{"head_turn": -0.6, "twist": -0.1},
+		{"head_turn": -0.6, "twist": -0.1, "head": -0.05},
+		{"head_turn": 0.0, "elbow_l": 0.2, "elbow_r": 0.2},
+	], false))
+	# hammer: martillea en el yunque (herrero, minero).
+	lib.add_animation("hammer", _make_anim(0.9, [
+		{"arm_r": 2.3, "elbow_r": 1.6, "arm_l": 0.9, "elbow_l": 0.9, "spine": 0.2, "head": 0.3},
+		{"arm_r": 2.5, "elbow_r": 1.5, "arm_l": 0.9, "elbow_l": 0.9, "spine": 0.18, "head": 0.3},
+		{"arm_r": 1.0, "elbow_r": 0.6, "arm_l": 0.9, "elbow_l": 0.9, "spine": 0.35, "head": 0.4, "bob": -0.02},
+		{"arm_r": 1.1, "elbow_r": 0.7, "arm_l": 0.9, "elbow_l": 0.9, "spine": 0.32, "head": 0.4, "bob": -0.02},
+	]))
+	# hoe: cava o rastrilla (campesinos).
+	lib.add_animation("hoe", _make_anim(1.6, [
+		{"arm_r": 1.9, "arm_l": 1.7, "elbow_r": 0.8, "elbow_l": 0.9, "spine": 0.1, "leg_l": 0.3, "knee_r": 0.2},
+		{"arm_r": 1.1, "arm_l": 0.9, "elbow_r": 0.3, "elbow_l": 0.4, "spine": 0.5, "head": 0.3, "leg_l": 0.35, "knee_r": 0.35, "bob": -0.04},
+		{"arm_r": 0.8, "arm_l": 0.7, "elbow_r": 0.6, "elbow_l": 0.6, "spine": 0.45, "head": 0.3, "twist": 0.2, "leg_l": 0.35, "knee_r": 0.35, "bob": -0.04},
+		{"arm_r": 1.3, "arm_l": 1.1, "elbow_r": 0.6, "elbow_l": 0.6, "spine": 0.25, "leg_l": 0.3, "knee_r": 0.25},
+	]))
+	lib.add_animation("pray", _make_anim(3.0, [
+		{"arm_r": 0.8, "arm_l": 0.8, "elbow_r": 1.9, "elbow_l": 1.9, "out_r": -0.25, "out_l": -0.25, "head": 0.35, "spine": 0.08},
+		{"arm_r": 0.85, "arm_l": 0.85, "elbow_r": 1.9, "elbow_l": 1.9, "out_r": -0.25, "out_l": -0.25, "head": 0.4, "spine": 0.1},
+	]))
+	# call: el mercader pregona su género.
+	lib.add_animation("call", _make_anim(1.6, [
+		{"arm_l": 1.3, "out_l": 0.4, "elbow_l": 0.4, "arm_r": 0.6, "elbow_r": 1.2, "head": -0.12, "twist": 0.2},
+		{"arm_l": 1.6, "out_l": 0.6, "elbow_l": 0.3, "arm_r": 0.6, "elbow_r": 1.2, "head": -0.15, "twist": 0.3},
+		{"arm_l": 0.6, "out_l": 0.2, "elbow_l": 0.6, "arm_r": 1.3, "out_r": 0.4, "elbow_r": 0.4, "head": -0.1, "twist": -0.2},
+		{"arm_l": 0.6, "out_l": 0.2, "elbow_l": 0.6, "arm_r": 1.6, "out_r": 0.6, "elbow_r": 0.3, "head": -0.12, "twist": -0.3},
+	]))
+	# guard: de pie, firme, con el arma al frente (guardias).
+	lib.add_animation("guard", _make_anim(2.4, [
+		{"arm_r": 0.7, "elbow_r": 1.3, "arm_l": 0.3, "elbow_l": 0.5, "head_turn": 0.2},
+		{"arm_r": 0.7, "elbow_r": 1.3, "arm_l": 0.3, "elbow_l": 0.5, "head_turn": -0.2, "bob": -0.005},
+	]))
+	# cower: se encoge y se tapa la cabeza (durante el asalto).
+	lib.add_animation("cower", _make_anim(0.5, [
+		{"arm_l": 2.6, "arm_r": 2.6, "elbow_l": 2.1, "elbow_r": 2.1, "out_l": -0.2, "out_r": -0.2, "spine": 0.55, "head": 0.5,
+			"leg_l": 0.7, "leg_r": 0.7, "knee_l": 1.4, "knee_r": 1.4, "bob": -0.35},
+		{"arm_l": 2.6, "arm_r": 2.6, "elbow_l": 2.1, "elbow_r": 2.1, "out_l": -0.2, "out_r": -0.2, "spine": 0.6, "head": 0.55,
+			"leg_l": 0.7, "leg_r": 0.7, "knee_l": 1.4, "knee_r": 1.4, "bob": -0.36},
+	]))
+	lib.add_animation("cheer", _make_anim(0.8, [
+		{"arm_l": 2.9, "arm_r": 2.9, "out_l": 0.4, "out_r": 0.4, "elbow_l": 0.2, "elbow_r": 0.2, "head": -0.2, "bob": 0.04},
+		{"arm_l": 2.5, "arm_r": 2.5, "out_l": 0.6, "out_r": 0.6, "elbow_l": 0.6, "elbow_r": 0.6, "head": -0.1, "knee_l": 0.3, "knee_r": 0.3, "bob": -0.03},
+	]))
 	lib.add_animation("hit", _make_anim(0.4, [
 		{"spine": -0.3, "head": -0.25, "arm_l": 0.4, "arm_r": 0.4, "knee_l": 0.2},
 		{"spine": -0.12, "head": -0.1},
@@ -216,15 +323,19 @@ func _bone_global_pos(bone_name: String) -> Vector3:
 ## Ángulos en radianes; positivo = hacia delante.
 func _frame_rotations(f: Dictionary) -> Dictionary:
 	var fwd := func(a: float) -> Quaternion: return Quaternion(Vector3.RIGHT, -a)
+	# Separar del cuerpo (brazos o piernas hacia los lados): positivo = hacia fuera.
+	var out_l := func(a: float) -> Quaternion: return Quaternion(Vector3.BACK, -a)
+	var out_r := func(a: float) -> Quaternion: return Quaternion(Vector3.BACK, a)
+	var turn := func(a: float) -> Quaternion: return Quaternion(Vector3.UP, a)
 	return {
-		"mixamorig_Spine1": Quaternion(Vector3.RIGHT, f.get("spine", 0.0)),
-		"mixamorig_Head": Quaternion(Vector3.RIGHT, f.get("head", 0.0)),
-		"mixamorig_LeftArm": fwd.call(f.get("arm_l", 0.0)) * _lower_l,
-		"mixamorig_RightArm": fwd.call(f.get("arm_r", 0.0)) * _lower_r,
+		"mixamorig_Spine1": turn.call(f.get("twist", 0.0)) * Quaternion(Vector3.RIGHT, f.get("spine", 0.0)),
+		"mixamorig_Head": turn.call(f.get("head_turn", 0.0)) * Quaternion(Vector3.RIGHT, f.get("head", 0.0)),
+		"mixamorig_LeftArm": out_l.call(f.get("out_l", 0.0)) * fwd.call(f.get("arm_l", 0.0)) * _lower_l,
+		"mixamorig_RightArm": out_r.call(f.get("out_r", 0.0)) * fwd.call(f.get("arm_r", 0.0)) * _lower_r,
 		"mixamorig_LeftForeArm": Quaternion(_elbow_axis_l, f.get("elbow_l", 0.15)),
 		"mixamorig_RightForeArm": Quaternion(_elbow_axis_r, f.get("elbow_r", 0.15)),
-		"mixamorig_LeftUpLeg": fwd.call(f.get("leg_l", 0.0)),
-		"mixamorig_RightUpLeg": fwd.call(f.get("leg_r", 0.0)),
+		"mixamorig_LeftUpLeg": out_l.call(f.get("side_l", 0.0)) * fwd.call(f.get("leg_l", 0.0)),
+		"mixamorig_RightUpLeg": out_r.call(f.get("side_r", 0.0)) * fwd.call(f.get("leg_r", 0.0)),
 		"mixamorig_LeftLeg": Quaternion(Vector3.RIGHT, f.get("knee_l", 0.0)),
 		"mixamorig_RightLeg": Quaternion(Vector3.RIGHT, f.get("knee_r", 0.0)),
 	}
