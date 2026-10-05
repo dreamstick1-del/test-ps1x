@@ -17,6 +17,9 @@ const PRESETS := {
 		"normal": 6.0, "equalize": 1.0},
 	"grass": {"src": "grass_photo.jpg", "crop": Rect2(0.0, 0.0, 1.0, 1.0), "size": 256,
 		"normal": 4.0, "equalize": 0.7, "mask": "dryness"},
+	# Foto de lado: se recortan hojas con transparencia para matas y arbustos.
+	"tallgrass": {"src": "tallgrass_photo.jpg", "crop": Rect2(0.0, 0.42, 1.0, 0.56), "size": 256,
+		"blades": 90},
 }
 
 
@@ -37,6 +40,9 @@ func _make(name: String, p: Dictionary) -> void:
 	var img := photo.get_region(r)
 	img.resize(size, size, Image.INTERPOLATE_LANCZOS)
 	_equalize(img, size, p.get("equalize", 1.0))
+	if p.has("blades"):
+		_make_blades(name, img, size, p.blades)
+		return
 	var albedo := _make_seamless(img, size)
 
 	if p.get("mask", "") == "dryness":
@@ -56,6 +62,50 @@ func _make(name: String, p: Dictionary) -> void:
 	height.bump_map_to_normal_map(p.normal)
 	height.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_normal.png" % name))
 	print("Textura '%s' generada desde %s" % [name, p.src])
+
+
+## Recorta hojas de hierba con transparencia: dibuja N hojas (triángulos largos
+## y curvados que salen del suelo) y cada píxel de hoja toma el color de la foto.
+## Abajo más oscuro (sombra entre los tallos), puntas a veces secas como en la foto.
+## La mata queda centrada y no toca los bordes laterales de la textura.
+func _make_blades(name: String, photo: Image, size: int, count: int) -> void:
+	var out := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var avg := Color(0, 0, 0)
+	for y in size:
+		for x in size:
+			avg += photo.get_pixel(x, y)
+	avg /= float(size * size)
+	for i in count:
+		# Mata en abanico: las hojas nacen cerca del centro y se abren hacia
+		# los lados; las de fuera son más bajas. Así ninguna toca el borde.
+		var spread := rng.randf_range(-1.0, 1.0)
+		var base_x := size * (0.5 + spread * 0.14)
+		var height := rng.randf_range(0.55, 0.98) * size * (1.0 - absf(spread) * 0.35)
+		var width := rng.randf_range(3.0, 8.0)
+		var lean := spread * rng.randf_range(0.25, 0.5) * height
+		var dry_tip := rng.randf() < 0.3
+		for yy in int(height):
+			var t := float(yy) / height # 0 abajo, 1 punta
+			var cx := base_x + lean * t * t
+			var half := width * (1.0 - t) * 0.5 + 0.35
+			for xx in range(int(cx - half - 1), int(cx + half + 2)):
+				if absf(xx + 0.5 - cx) > half:
+					continue
+				var px := posmod(xx, size)
+				var py := size - 1 - yy
+				var c := photo.get_pixel(px, py)
+				# Fuera reflejos raros (blancos/morados): hacia el verde medio de la foto.
+				var off := absf(c.r - c.g) + absf(c.b - c.g * 0.6)
+				c = c.lerp(avg, clampf(0.25 + off, 0.0, 0.8))
+				c = c.darkened(0.45 * (1.0 - t) * (1.0 - t))
+				if dry_tip and t > 0.8:
+					c = c.lerp(Color(0.55, 0.36, 0.2), 0.7)
+				out.set_pixel(px, py, Color(c.r, c.g, c.b, 1.0))
+	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
+	print("Textura '%s' (hojas recortadas) generada desde %s" % [name, PRESETS[name].src])
 
 
 ## Quita el degradado de luz de la foto: divide cada píxel por el brillo medio

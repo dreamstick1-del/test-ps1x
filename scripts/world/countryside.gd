@@ -58,6 +58,7 @@ func build() -> void:
 	_build_farm()
 	_build_charcoal_camp()
 	_build_forests()
+	_build_foliage()
 	_build_map_lines()
 
 
@@ -303,34 +304,21 @@ func _build_mill() -> void:
 # --- Campos y pastos ------------------------------------------------------------
 
 func _build_fields() -> void:
-	var stalk := BoxMesh.new()
-	stalk.size = Vector3(0.05, 0.85, 0.05)
+	# Trigo con la misma textura de hierba alta, teñida de oro, en hileras.
+	var wheat := []
 	for f: Rect2 in FIELDS:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = stalk
-		var pts: Array[Transform3D] = []
-		var x := f.position.x + 0.2
-		while x < f.end.x:
-			var z := f.position.y + 0.2
-			while z < f.end.y:
-				var px := x + rng.randf_range(-0.12, 0.12)
-				var pz := z + rng.randf_range(-0.12, 0.12)
-				var s := rng.randf_range(0.8, 1.15)
-				var basis := Basis.from_euler(Vector3(rng.randf_range(-0.15, 0.15), rng.randf() * TAU, rng.randf_range(-0.15, 0.15))).scaled(Vector3(1, s, 1))
-				pts.append(Transform3D(basis, Vector3(px, height(px, pz) + 0.4 * s, pz)))
-				z += 0.4
-			x += 0.5
-		mm.instance_count = pts.size()
-		for i in pts.size():
-			mm.set_instance_transform(i, pts[i])
-			mm.set_instance_color(i, Color(0.95, 0.78, 0.32).lerp(Color(0.8, 0.7, 0.25), rng.randf()))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.material_override = PS1Assets.vertex_colored("", Vector2.ONE, false)
-		w.add_child(mmi)
+		var x := f.position.x + 0.35
+		while x < f.end.x - 0.2:
+			var z := f.position.y + 0.35
+			while z < f.end.y - 0.2:
+				var px := x + rng.randf_range(-0.15, 0.15)
+				var pz := z + rng.randf_range(-0.15, 0.15)
+				var gold := Color(1.75, 1.3, 0.45).lerp(Color(1.5, 1.2, 0.5), rng.randf())
+				wheat.append({"pos": ground(px, pz), "scale": rng.randf_range(0.85, 1.1), "tint": gold})
+				z += 0.6
+			x += 0.7
 		w.map_features.append({"pos": f.get_center(), "size": f.size, "rot": 0.0, "color": Color(0.75, 0.65, 0.3)})
+	Foliage.plant(w, "trigo", wheat)
 	for bale: Array in [["haybale_wrapped", Vector2(29.0, -14.0), 1.5], ["haybale", Vector2(29.0, 8.0), 0.2],
 			["haybale_wrapped_dry", Vector2(-17.5, 39.5), 0.8]]:
 		Kit.place_solid(w, bale[0], ground(bale[1].x, bale[1].y), bale[2])
@@ -555,6 +543,89 @@ func _build_forests() -> void:
 	_plant(spots)
 	w.add_location("BOSQUE", Vector3(34, -2, -36), Vector3(28, 20, 24))
 	w.add_location("BOSQUE DE LOS LOBOS", Vector3(-36, -2, -40), Vector3(22, 20, 16))
+
+
+## Vegetación de tarjetas (Foliage): juncos en las orillas, hierba alta junto a
+## vallas y empalizada, arbustos en los lindes del bosque, matas por el campo y
+## matas secas en las colinas. No tiene colisión: se atraviesa andando.
+func _build_foliage() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 2024
+	var reeds := []
+	var z := -HALF + 1.0
+	while z < HALF - 1.0:
+		for side: float in [-1.0, 1.0]:
+			var x := river_x(z) + side * r.randf_range(3.4, 4.6)
+			if absf(z) > 2.5 and r.randf() < 0.75:
+				reeds.append({"pos": ground(x, z), "scale": r.randf_range(0.8, 1.3)})
+		z += r.randf_range(0.7, 1.3)
+	Foliage.plant(w, "junco", reeds)
+
+	var tall := []
+	# Al pie de las vallas de los pastos y del corral.
+	for rect: Rect2 in [PASTURE, Rect2(-17, 31, 6, 5)]:
+		var e := 0.0
+		var perim := (rect.size.x + rect.size.y) * 2.0
+		while e < perim:
+			var p := _perimeter_point(rect, e)
+			p += Vector2(r.randf_range(-0.5, 0.5), r.randf_range(-0.5, 0.5))
+			if road_distance(p.x, p.y) > 2.2:
+				tall.append({"pos": ground(p.x, p.y), "scale": r.randf_range(0.7, 1.1)})
+			e += r.randf_range(1.2, 2.4)
+	# Por dentro de la empalizada del pueblo.
+	var t := -16.5
+	while t < 16.5:
+		for p: Vector2 in [Vector2(-16.9, t), Vector2(16.9, t), Vector2(t, -16.9)]:
+			if r.randf() < 0.45 and road_distance(p.x, p.y) > 2.0 and absf(p.y - 4.5) > 2.2 and absf(p.x - 9.5) > 2.2:
+				tall.append({"pos": Vector3(p.x, 0.0, p.y), "scale": r.randf_range(0.6, 1.0)})
+		t += 1.1
+	Foliage.plant(w, "hierba_alta", tall)
+
+	var bushes := []
+	var tufts := []
+	var dry := []
+	for i in 1400:
+		var x := r.randf_range(-HALF + 1.5, HALF - 1.5)
+		var zz := r.randf_range(-HALF + 1.5, HALF - 1.5)
+		if absf(x) < VILLAGE + 1.0 and absf(zz) < VILLAGE + 1.0:
+			continue
+		if road_distance(x, zz) < 2.6 or absf(x - river_x(zz)) < 5.0:
+			continue
+		var on_field := false
+		for f: Rect2 in FIELDS:
+			if f.grow(1.0).has_point(Vector2(x, zz)):
+				on_field = true
+		if on_field or PASTURE.has_point(Vector2(x, zz)):
+			continue
+		var g := ground_sample(x, zz)
+		if g.mud > 0.35:
+			continue
+		var forest_edge := 0.0
+		for f: Vector3 in FOREST_FLOORS:
+			var d := Vector2(x, zz).distance_to(Vector2(f.x, f.y))
+			forest_edge = maxf(forest_edge, 1.0 - absf(d - f.z * 0.85) / 4.0)
+		var h := height(x, zz)
+		if forest_edge > 0.2 and r.randf() < 0.35:
+			bushes.append({"pos": ground(x, zz), "scale": r.randf_range(0.8, 1.3)})
+		elif h > 2.0 and r.randf() < 0.25:
+			dry.append({"pos": ground(x, zz), "scale": r.randf_range(0.7, 1.1)})
+		elif r.randf() < 0.4:
+			tufts.append({"pos": ground(x, zz), "scale": r.randf_range(0.6, 1.0)})
+	Foliage.plant(w, "arbusto", bushes)
+	Foliage.plant(w, "mata", tufts)
+	Foliage.plant(w, "seca", dry)
+
+
+static func _perimeter_point(rect: Rect2, e: float) -> Vector2:
+	var w := rect.size.x
+	var h := rect.size.y
+	if e < w:
+		return rect.position + Vector2(e, 0)
+	if e < w + h:
+		return rect.position + Vector2(w, e - w)
+	if e < w * 2 + h:
+		return rect.position + Vector2(w - (e - w - h), h)
+	return rect.position + Vector2(0, h - (e - w * 2 - h))
 
 
 func _far_from(spots: Array[Vector2], p: Vector2, d: float) -> bool:
