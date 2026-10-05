@@ -9,24 +9,28 @@ extends Node3D
 
 const FPS := 15.0
 
-## Poses: [posición respecto a la cámara, rotación en grados].
+## Poses: [posición de la mano respecto a la cámara, hacia dónde apunta la
+## hoja, hacia dónde queda el codo]. Espacio de la cámara: -Z delante, +X
+## derecha, +Y arriba. Así cada pose se lee sola: "rest" = hoja arriba a la
+## izquierda, codo abajo a la derecha. Los tajos barren la pantalla en
+## horizontal para que la hoja se vea entera.
 const POSES := {
-	"rest": [Vector3(0.34, -0.36, -0.5), Vector3(-30, -10, -16)],
-	"block": [Vector3(0.04, -0.16, -0.46), Vector3(8, 0, 84)],
-	"block_shield": [Vector3(0.36, -0.3, -0.42), Vector3(-10, -20, -40)],
-	"wind_r": [Vector3(0.50, -0.06, -0.42), Vector3(-15, -55, -75)],
-	"slash_l": [Vector3(-0.42, -0.36, -0.56), Vector3(-75, 45, 70)],
-	"wind_l": [Vector3(-0.42, -0.08, -0.44), Vector3(-15, 55, 75)],
-	"slash_r": [Vector3(0.46, -0.40, -0.56), Vector3(-75, -45, -70)],
-	"thrust_back": [Vector3(0.22, -0.22, -0.28), Vector3(-90, 0, 0)],
-	"thrust_fwd": [Vector3(0.06, -0.14, -0.95), Vector3(-90, 0, 0)],
-	"overhead": [Vector3(0.14, 0.18, -0.30), Vector3(28, 0, -8)],
-	"charge": [Vector3(0.26, -0.12, -0.5), Vector3(10, -18, -32)],
-	"overhead_down": [Vector3(0.04, -0.46, -0.62), Vector3(-115, 0, 0)],
-	"pray": [Vector3(0.10, -0.75, -0.40), Vector3(-10, 0, 0)],
-	"run": [Vector3(0.3, -0.52, -0.42), Vector3(-62, -18, -30)],
-	"lowered": [Vector3(0.3, -0.95, -0.35), Vector3(-80, -10, -20)],
-	"jump": [Vector3(0.36, -0.28, -0.46), Vector3(-15, -12, -22)],
+	"rest": [Vector3(0.3, -0.33, -0.55), Vector3(-0.35, 0.85, -0.45), Vector3(0.5, -0.7, 0.5)],
+	"block": [Vector3(0.06, -0.15, -0.5), Vector3(-1.0, 0.15, -0.1), Vector3(0.3, -0.8, 0.5)],
+	"block_shield": [Vector3(0.3, -0.25, -0.5), Vector3(0.1, 0.9, -0.4), Vector3(0.4, -0.7, 0.5)],
+	"wind_r": [Vector3(0.3, -0.06, -0.55), Vector3(0.55, 0.75, 0.05), Vector3(0.3, -0.8, 0.4)],
+	"slash_l": [Vector3(-0.2, -0.25, -0.6), Vector3(-0.85, -0.1, -0.5), Vector3(0.6, -0.5, 0.6)],
+	"wind_l": [Vector3(-0.18, -0.02, -0.55), Vector3(-0.6, 0.7, 0.1), Vector3(0.5, -0.7, 0.4)],
+	"slash_r": [Vector3(0.28, -0.3, -0.6), Vector3(0.8, -0.1, -0.6), Vector3(-0.1, -0.7, 0.7)],
+	"thrust_back": [Vector3(0.24, -0.22, -0.34), Vector3(-0.08, 0.15, -1.0), Vector3(0.3, -0.4, 0.9)],
+	"thrust_fwd": [Vector3(0.08, -0.15, -0.8), Vector3(-0.02, 0.05, -1.0), Vector3(0.3, -0.4, 0.9)],
+	"overhead": [Vector3(0.12, 0.1, -0.5), Vector3(-0.15, 0.85, 0.3), Vector3(0.5, -0.6, 0.5)],
+	"charge": [Vector3(0.3, -0.02, -0.5), Vector3(0.25, 0.85, 0.4), Vector3(0.4, -0.8, 0.3)],
+	"overhead_down": [Vector3(0.08, -0.3, -0.6), Vector3(-0.05, -0.6, -0.8), Vector3(0.3, 0.2, 0.9)],
+	"pray": [Vector3(0.1, -0.7, -0.42), Vector3(0.0, 1.0, -0.1), Vector3(0.3, -0.5, 0.8)],
+	"run": [Vector3(0.3, -0.42, -0.5), Vector3(0.05, 0.75, 0.6), Vector3(0.4, -0.8, 0.2)],
+	"lowered": [Vector3(0.3, -0.95, -0.35), Vector3(0.0, 1.0, -0.3), Vector3(0.3, -0.6, 0.7)],
+	"jump": [Vector3(0.36, -0.25, -0.5), Vector3(-0.2, 0.85, -0.45), Vector3(0.5, -0.7, 0.5)],
 }
 
 ## Pose del escudo: [posición, rotación].
@@ -36,10 +40,14 @@ const SHIELD_POSES := {
 	"lowered": [Vector3(-0.5, -1.0, -0.5), Vector3(-30, 60, 10)],
 }
 
-## Ajuste del modelo en la mano: escala y desplazamiento a lo largo del mango.
+## Ajuste del modelo en la mano: escala, desplazamiento a lo largo del mango y
+## giro sobre el mango. Las hojas van con el filo en línea con los nudillos
+## (yaw 90): desde los ojos de Henry se ve la cara plana de la hoja.
 const GRIPS := {
+	"sword": {"scale": 0.85, "offset": Vector3.ZERO, "yaw": 90.0},
+	"sword_steel": {"scale": 0.85, "offset": Vector3.ZERO, "yaw": 90.0},
+	"dagger": {"scale": 1.0, "offset": Vector3.ZERO, "yaw": 90.0},
 	"spear": {"scale": 0.85, "offset": Vector3(0, -0.35, 0)},
-	"dagger": {"scale": 1.0, "offset": Vector3.ZERO},
 	"mace": {"scale": 0.9, "offset": Vector3.ZERO},
 	"axe": {"scale": 0.9, "offset": Vector3.ZERO},
 }
@@ -102,7 +110,13 @@ func is_swapping() -> bool:
 
 
 func pose(pose_name: String) -> Transform3D:
-	return _pose_of(POSES, pose_name)
+	var p: Array = POSES[pose_name]
+	var blade: Vector3 = (p[1] as Vector3).normalized()
+	var elbow: Vector3 = p[2]
+	# Ejes del arma: Y = hoja, Z = hacia el codo, X = el plano de la guarda.
+	var z := (elbow - blade * elbow.dot(blade)).normalized()
+	var x := blade.cross(z).normalized()
+	return Transform3D(Basis(x, blade, z), p[0])
 
 
 func _pose_of(table: Dictionary, pose_name: String) -> Transform3D:
@@ -175,14 +189,9 @@ func _process(delta: float) -> void:
 	_shield.transform = Transform3D(_shield_xf.basis, _shield_xf.origin + bob * 0.8)
 
 
-## Puño y manga de Henry (fijos); el modelo del arma va encima.
+## Puño y antebrazo de Henry (fijos); el modelo del arma va encima.
 func _build_hand() -> void:
-	var skin := Color(0.86, 0.66, 0.52)
-	var sleeve := Color(0.82, 0.76, 0.62)
-	var hand := Node3D.new()
-	hand.name = "Hand"
-	_add_box(hand, Vector3(0.09, 0.11, 0.1), Vector3(0, 0.0, 0.0), skin)
-	_add_box(hand, Vector3(0.1, 0.3, 0.11), Vector3(0.02, -0.12, 0.2), sleeve, Vector3(-60, 0, 0))
+	var hand := WeaponFactory.build_hand()
 	WeaponFactory.make_viewmodel(hand)
 	_arm.add_child(hand)
 
@@ -196,12 +205,5 @@ func _set_model(kind: String) -> void:
 	var grip: Dictionary = GRIPS.get(kind, {"scale": 0.85, "offset": Vector3.ZERO})
 	_model.scale = Vector3.ONE * grip.scale
 	_model.position = grip.offset
+	_model.rotation_degrees.y = grip.get("yaw", 0.0)
 	_arm.add_child(_model)
-
-
-func _add_box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, rot_deg := Vector3.ZERO) -> void:
-	var mi := MeshInstance3D.new()
-	PS1Assets.setup_box(mi, size, PS1Assets.flat(color))
-	mi.position = pos
-	mi.rotation_degrees = rot_deg
-	parent.add_child(mi)
