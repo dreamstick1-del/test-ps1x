@@ -617,7 +617,7 @@ func _build_animals() -> void:
 func _mesh(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material, rot := Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.material_override = mat
+	mi.material_override = PS1Assets.resolve(mat)
 	mi.position = pos
 	mi.rotation = rot
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -626,9 +626,13 @@ func _mesh(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material, rot := Vecto
 
 
 func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot_y := 0.0) -> MeshInstance3D:
-	var box := BoxMesh.new()
-	box.size = size
-	return _mesh(parent, box, pos, mat, Vector3(0, rot_y, 0))
+	var mi := MeshInstance3D.new()
+	PS1Assets.setup_box(mi, size, mat)
+	mi.position = pos
+	mi.rotation.y = rot_y
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	return mi
 
 
 ## Plano subdividido: con mapeado afín, los polígonos grandes se deforman

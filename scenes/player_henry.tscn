@@ -30,7 +30,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)
 [node name="Camera3D" type="Camera3D" parent="Head"]
 fov = 70.0
 near = 0.04
-far = 120.0
+far = 60.0
 
 [node name="Weapon" type="Node3D" parent="Head/Camera3D"]
 script = ExtResource("3_weapon")

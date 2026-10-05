@@ -9,7 +9,23 @@ const VIEWMODEL_SHADER := preload("res://shaders/ps1_viewmodel.gdshader")
 const TEX_SIZE := 32
 
 static var _textures := {}
+static var _boxes := {}
+static var _colored_boxes := {}
+static var _flat_markers := {}
+static var _vertex_color_flat: ShaderMaterial
+static var _viewmodel_flat: ShaderMaterial
 static var _materials := {}
+
+
+## BoxMesh compartido por tamaño: miles de cajas iguales usan un solo búfer
+## en la GPU (imprescindible en WebGL).
+static func box(size: Vector3) -> BoxMesh:
+	var key := size.snappedf(0.001)
+	if not _boxes.has(key):
+		var m := BoxMesh.new()
+		m.size = key
+		_boxes[key] = m
+	return _boxes[key]
 
 
 ## Material PS1 con textura procedural. world_uv tilea la textura en espacio mundo
@@ -31,9 +47,65 @@ static func material(tex_name: String, tint := Color.WHITE, uv_scale := Vector2(
 	return mat
 
 
-## Material de color plano (personajes, detalles).
-static func flat(color: Color, emission := 0.0) -> ShaderMaterial:
-	return material("", color, Vector2.ONE, false, emission)
+## Color plano (personajes, detalles). Devuelve un "marcador" ligero que solo
+## lleva el color: setup_box() lo convierte en una caja con el color en los
+## vértices y un único material compartido. WebGL deja de dibujar si hay más de
+## un centenar de materiales distintos, así que nunca se crea uno por color.
+## Para mallas que no son cajas, resolve() da el material real.
+static func flat(color: Color, emission := 0.0) -> Material:
+	var key := "%s|%s" % [color.to_html(), emission]
+	if not _flat_markers.has(key):
+		var marker := ShaderMaterial.new() # Sin shader: no ocupa nada en la GPU.
+		marker.set_meta("flat_color", color)
+		marker.set_meta("flat_emission", emission)
+		_flat_markers[key] = marker
+	return _flat_markers[key]
+
+
+## Material real para un marcador de flat(); cualquier otro material pasa tal cual.
+static func resolve(mat: Material) -> Material:
+	if mat == null or not mat.has_meta("flat_color"):
+		return mat
+	return material("", mat.get_meta("flat_color"), Vector2.ONE, false, mat.get_meta("flat_emission"))
+
+
+## Asigna malla y material a una caja. Las de color plano comparten material.
+static func setup_box(mi: MeshInstance3D, size: Vector3, mat: Material) -> void:
+	if mat and mat.has_meta("flat_color") and float(mat.get_meta("flat_emission")) == 0.0:
+		mi.mesh = colored_box(size, mat.get_meta("flat_color"))
+		mi.material_override = vertex_color_flat()
+	else:
+		mi.mesh = box(size)
+		mi.material_override = resolve(mat)
+
+
+## Caja con el color horneado en los vértices (en lineal, como hacía source_color).
+static func colored_box(size: Vector3, color: Color) -> ArrayMesh:
+	var key := "%s|%s" % [size.snappedf(0.001), color.to_html()]
+	if not _colored_boxes.has(key):
+		var arrays := box(size).get_mesh_arrays()
+		var colors := PackedColorArray()
+		colors.resize((arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size())
+		colors.fill(color.srgb_to_linear())
+		arrays[Mesh.ARRAY_COLOR] = colors
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		_colored_boxes[key] = mesh
+	return _colored_boxes[key]
+
+
+static func vertex_color_flat() -> ShaderMaterial:
+	if _vertex_color_flat == null:
+		_vertex_color_flat = vertex_colored("", Vector2.ONE, false)
+	return _vertex_color_flat
+
+
+## Versión para el arma en primera persona (sin test de profundidad).
+static func viewmodel_vertex_color() -> ShaderMaterial:
+	if _viewmodel_flat == null:
+		_viewmodel_flat = viewmodel(Color.WHITE)
+		_viewmodel_flat.set_shader_parameter("use_vertex_color", true)
+	return _viewmodel_flat
 
 
 ## Material PS1 con una textura propia (personajes con UV), sin caché.

@@ -112,11 +112,8 @@ func _pivot(pivot_name: String, parent: Node3D, pos: Vector3) -> Node3D:
 
 func _part(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mi.mesh = box
+	PS1Assets.setup_box(mi, size, PS1Assets.flat(color))
 	mi.position = pos
-	mi.material_override = PS1Assets.flat(color)
 	parent.add_child(mi)
 	return mi
 

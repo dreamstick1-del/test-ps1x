@@ -8,6 +8,7 @@ global uniform float ps1_vertex_snap;
 
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform float emission_strength = 0.0;
+uniform bool use_vertex_color = false;
 uniform vec2 snap_resolution = vec2(160.0, 120.0);
 
 void vertex() {
@@ -22,5 +23,8 @@ void vertex() {
 
 void fragment() {
 	ALBEDO = albedo.rgb;
+	if (use_vertex_color) {
+		ALBEDO *= COLOR.rgb;
+	}
 	EMISSION = ALBEDO * emission_strength;
 }

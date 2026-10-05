@@ -444,7 +444,7 @@ func _build_charcoal_camp() -> void:
 		var puff := BoxMesh.new()
 		puff.size = Vector3.ONE * 0.35
 		smoke.mesh = puff
-		smoke.material_override = PS1Assets.flat(Color(0.45, 0.45, 0.48))
+		smoke.material_override = PS1Assets.resolve(PS1Assets.flat(Color(0.45, 0.45, 0.48)))
 		smoke.position = p + Vector3(0, 1.1, 0)
 		w.add_child(smoke)
 	var wood := PS1Assets.material("wood", Color.WHITE, Vector2(1, 1))

@@ -20,7 +20,7 @@ static func burst(parent: Node, pos: Vector3, color: Color, amount := 10, speed 
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE * 0.05
 	p.mesh = cube
-	p.material_override = PS1Assets.flat(color, 0.6)
+	p.material_override = PS1Assets.resolve(PS1Assets.flat(color, 0.6))
 	parent.add_child(p)
 	p.global_position = pos
 	p.emitting = true

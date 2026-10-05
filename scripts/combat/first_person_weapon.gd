@@ -97,10 +97,7 @@ func _process(delta: float) -> void:
 
 func _add_box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, rot_deg := Vector3.ZERO) -> void:
 	var mi := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mi.mesh = box
+	PS1Assets.setup_box(mi, size, PS1Assets.flat(color))
 	mi.position = pos
 	mi.rotation_degrees = rot_deg
-	mi.material_override = PS1Assets.flat(color)
 	parent.add_child(mi)

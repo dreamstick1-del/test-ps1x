@@ -16,6 +16,10 @@ extends Node3D
 ## "" (nada), "sword", "axe" o "hammer" (ver WeaponFactory).
 @export var weapon := ""
 
+## Un material por textura, compartido por todos los que la usan (WebGL
+## no admite cientos de materiales distintos).
+static var _material_cache := {}
+
 var animation_player: AnimationPlayer
 var skeleton: Skeleton3D
 
@@ -114,7 +118,9 @@ func _apply_texture() -> void:
 				original = (load(base + ".png") as Texture2D).get_image()
 			var img := CharacterRepaint.generate(mi, skeleton, CharacterRepaint.OUTFITS[outfit], original)
 			tex = ImageTexture.create_from_image(img)
-		mi.material_override = PS1Assets.textured(tex)
+		if not _material_cache.has(tex_path):
+			_material_cache[tex_path] = PS1Assets.textured(tex)
+		mi.material_override = _material_cache[tex_path]
 
 
 func _add_blob_shadow() -> void:

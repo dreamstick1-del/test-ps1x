@@ -156,11 +156,8 @@ func _leg(pivot_pos: Vector3, size: Vector3, color: Color) -> void:
 
 func _part(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> void:
 	var mi := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mi.mesh = box
+	PS1Assets.setup_box(mi, size, PS1Assets.flat(color))
 	mi.position = pos
-	mi.material_override = PS1Assets.flat(color)
 	parent.add_child(mi)
 
 

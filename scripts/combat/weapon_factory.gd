@@ -36,21 +36,26 @@ static func build(kind: String) -> Node3D:
 ## Convierte todas las piezas al material de "viewmodel" (siempre visible).
 static func make_viewmodel(root: Node3D) -> void:
 	for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
-		var src := mi.material_override as ShaderMaterial
-		mi.material_override = PS1Assets.viewmodel(src.get_shader_parameter("albedo"))
+		if mi.material_override == PS1Assets.vertex_color_flat():
+			mi.material_override = PS1Assets.viewmodel_vertex_color()
+		else:
+			var src := mi.material_override as ShaderMaterial
+			mi.material_override = PS1Assets.viewmodel(src.get_shader_parameter("albedo"))
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 static func _part(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
-	var box := BoxMesh.new()
-	box.size = size
-	return _mesh(parent, box, pos, color)
+	var mi := MeshInstance3D.new()
+	PS1Assets.setup_box(mi, size, PS1Assets.flat(color))
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
 
 
 static func _mesh(parent: Node3D, mesh: Mesh, pos: Vector3, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.position = pos
-	mi.material_override = PS1Assets.flat(color)
+	mi.material_override = PS1Assets.resolve(PS1Assets.flat(color))
 	parent.add_child(mi)
 	return mi

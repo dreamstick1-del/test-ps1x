@@ -34,7 +34,7 @@ func _ready() -> void:
 		b.size = Vector3.ONE * 0.12
 		s.mesh = b
 		s.position = Vector3(randf_range(-0.6, 0.6), randf_range(0.3, 1.0), randf_range(-0.56, 0.56))
-		s.material_override = PS1Assets.flat(Color(0.85, 0.88, 0.95), 0.8)
+		s.material_override = PS1Assets.resolve(PS1Assets.flat(Color(0.85, 0.88, 0.95), 0.8))
 		add_child(s)
 		_sparkles.append(s)
 	Economy.day_passed.connect(func(_d: int) -> void:

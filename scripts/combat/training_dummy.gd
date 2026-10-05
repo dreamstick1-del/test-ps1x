@@ -76,14 +76,15 @@ func stagger(_duration: float) -> void:
 
 
 func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
-	var box := BoxMesh.new()
-	box.size = size
-	_mesh(box, pos, mat)
+	var mi := MeshInstance3D.new()
+	PS1Assets.setup_box(mi, size, mat)
+	mi.position = pos
+	_visual.add_child(mi)
 
 
 func _mesh(mesh: Mesh, pos: Vector3, mat: Material) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.position = pos
-	mi.material_override = mat
+	mi.material_override = PS1Assets.resolve(mat)
 	_visual.add_child(mi)
