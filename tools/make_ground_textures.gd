@@ -31,6 +31,10 @@ const PRESETS := {
 	# Silueta de pino (abeto) con pisos de ramas caídas hechas de miles de agujas;
 	# el color sale de la foto de pasto, oscurecido hacia verde azulado.
 	"pine": {"src": "grass_photo.jpg", "crop": Rect2(0, 0, 1, 1), "size": 256, "needles": 9000},
+	# Texturas repetibles con huecos para envolver volúmenes (copas, pinos).
+	"leaftile": {"src": "leaf_front_photo.jpg", "srcs": ["leaf_front_photo.jpg", "leaf_back_photo.jpg"],
+		"crop": Rect2(0, 0, 1, 1), "size": 256, "tile_leaves": 150},
+	"needletile": {"src": "grass_photo.jpg", "crop": Rect2(0, 0, 1, 1), "size": 256, "tile_needles": 14000},
 	"leafcluster": {"src": "leaf_front_photo.jpg", "srcs": ["leaf_front_photo.jpg", "leaf_back_photo.jpg"],
 		"crop": Rect2(0, 0, 1, 1), "size": 256, "cluster": 130},
 }
@@ -53,6 +57,12 @@ func _make(name: String, p: Dictionary) -> void:
 	var img := photo.get_region(r)
 	img.resize(size, size, Image.INTERPOLATE_LANCZOS)
 	_equalize(img, size, p.get("equalize", 1.0))
+	if p.has("tile_leaves"):
+		_make_leaf_tile(name, p)
+		return
+	if p.has("tile_needles"):
+		_make_needle_tile(name, img, size, p.tile_needles)
+		return
 	if p.has("needles"):
 		_make_pine(name, img, size, p.needles)
 		return
@@ -253,7 +263,55 @@ func _make_cluster(name: String, p: Dictionary) -> void:
 	print("Textura '%s' (racimo de %d hojas) generada desde %s" % [name, count, ", ".join(p.srcs)])
 
 
-func _stamp(out: Image, leaf: Image, center: Vector2, rot: float, scale: float, light: float) -> void:
+## Hojas estampadas por toda la textura, repitiéndose por los bordes (sin
+## costuras). Deja huecos transparentes entre hojas: al envolver un volumen se
+## ve a través, como las hojas de Minecraft pero con hojas reales.
+func _make_leaf_tile(name: String, p: Dictionary) -> void:
+	var size: int = p.size
+	var leaves: Array[Image] = []
+	for src: String in p.srcs:
+		leaves.append(_cut_leaf(src, 40))
+	var out := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 21
+	var count: int = p.tile_leaves
+	for i in count:
+		var depth := float(i) / count
+		var leaf: Image = leaves[0] if rng.randf() < 0.7 else leaves[1]
+		var center := Vector2(rng.randf() * size, rng.randf() * size)
+		# Hojas colgando: la punta mira sobre todo hacia abajo.
+		var rot := PI + rng.randf_range(-1.1, 1.1)
+		_stamp(out, leaf, center, rot, rng.randf_range(0.75, 1.1), lerpf(0.55, 1.1, depth), true)
+	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
+	print("Textura '%s' (%d hojas, repetible) generada desde %s" % [name, count, ", ".join(p.srcs)])
+
+
+## Agujas de pino repetibles: trazos que caen en diagonal, en manojos, con huecos.
+func _make_needle_tile(name: String, photo: Image, size: int, needles: int) -> void:
+	var out := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	var tufts := needles / 30
+	for t in tufts:
+		var base := Vector2(rng.randf() * size, rng.randf() * size)
+		var shade := rng.randf_range(0.5, 1.1)
+		for n in 30:
+			var c := photo.get_pixel(rng.randi() % size, rng.randi() % size)
+			var light := shade * rng.randf_range(0.85, 1.1)
+			var col := Color(c.r * 0.32 * light, (c.g * 0.6 + 0.05) * light, c.b * 0.55 * light + 0.04, 1.0)
+			var a := PI * 0.5 + rng.randf_range(-0.9, 0.9) # hacia abajo, abiertas en abanico
+			var dir := Vector2(cos(a), sin(a))
+			var length := rng.randf_range(10.0, 20.0)
+			for k in int(length):
+				var q := base + dir * k
+				out.set_pixel(posmod(int(q.x), size), posmod(int(q.y), size), col)
+	out.save_png(ProjectSettings.globalize_path("res://assets/textures/%s_albedo.png" % name))
+	print("Textura '%s' (agujas, repetible) generada desde %s" % [name, PRESETS[name].src])
+
+
+func _stamp(out: Image, leaf: Image, center: Vector2, rot: float, scale: float, light: float, wrap := false) -> void:
 	var lw := leaf.get_width() * scale
 	var lh := leaf.get_height() * scale
 	var r := ceili(Vector2(lw, lh).length() * 0.5)
@@ -261,7 +319,7 @@ func _stamp(out: Image, leaf: Image, center: Vector2, rot: float, scale: float, 
 	var sn := sin(-rot)
 	for y in range(int(center.y) - r, int(center.y) + r):
 		for x in range(int(center.x) - r, int(center.x) + r):
-			if x < 0 or y < 0 or x >= out.get_width() or y >= out.get_height():
+			if not wrap and (x < 0 or y < 0 or x >= out.get_width() or y >= out.get_height()):
 				continue
 			var d := Vector2(x, y) - center
 			var u := (d.x * cs - d.y * sn) / scale + leaf.get_width() * 0.5
@@ -271,7 +329,7 @@ func _stamp(out: Image, leaf: Image, center: Vector2, rot: float, scale: float, 
 			var c := leaf.get_pixel(int(u), int(v))
 			if c.a < 0.5:
 				continue
-			out.set_pixel(x, y, Color(c.r * light, c.g * light, c.b * light, 1.0))
+			out.set_pixel(posmod(x, out.get_width()), posmod(y, out.get_height()), Color(c.r * light, c.g * light, c.b * light, 1.0))
 
 
 ## Mata de hojas: alfa = hoja (más clara que el hueco oscuro entre hojas)

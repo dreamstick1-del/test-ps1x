@@ -11,6 +11,8 @@ const TEXTURES := {
 	"morada": "res://assets/textures/purple_albedo.png",
 	"copa": "res://assets/textures/leafcluster_albedo.png",
 	"pino": "res://assets/textures/pine_albedo.png",
+	"hojas_vol": "res://assets/textures/leaftile_albedo.png",
+	"agujas_vol": "res://assets/textures/needletile_albedo.png",
 }
 
 ## Tipos: tamaño (ancho, alto), tinte y nº de tarjetas.
@@ -28,6 +30,9 @@ const KINDS := {
 	# Pino: 16 planos (2 pisos de 8) con la silueta de abeto; sin tarjeta arriba.
 	"pino": {"size": Vector2(2.8, 4.4), "tint": Color(1, 1, 1), "cards": 8, "texture": "pino", "top": false,
 		"layers": [[Vector2(2.9, 4.4), 0.35, 0.0], [Vector2(2.5, 4.0), 0.75, 0.2]]},
+	# Volúmenes con forma (VolumeFoliage): copa de nubes y pino de conos.
+	"copa_vol": {"size": Vector2.ONE, "tint": Color(1, 1, 1), "cards": 0, "texture": "hojas_vol", "builder": "crown"},
+	"pino_vol": {"size": Vector2.ONE, "tint": Color(1, 1, 1), "cards": 0, "texture": "agujas_vol", "builder": "pine"},
 	"ornamental": {"size": Vector2(1.35, 0.95), "tint": Color(1, 1, 1), "cards": 4, "texture": "morada", "top": true},
 }
 
@@ -71,6 +76,9 @@ static func material(texture := "hierba") -> ShaderMaterial:
 		mat.set_shader_parameter("foliage_texture", load(TEXTURES[texture]))
 		if texture != "hierba":
 			mat.set_shader_parameter("wind_strength", 0.04) # Las matas de hojas apenas se mueven.
+		if texture.ends_with("_vol"):
+			mat.set_shader_parameter("volume", true)
+			mat.set_shader_parameter("wind_strength", 0.07)
 		_materials[texture] = mat
 	return _materials[texture]
 
@@ -111,6 +119,9 @@ static func _mesh(kind: String) -> ArrayMesh:
 	if _meshes.has(kind):
 		return _meshes[kind]
 	var def: Dictionary = KINDS[kind]
+	if def.has("builder"):
+		_meshes[kind] = VolumeFoliage.crown() if def.builder == "crown" else VolumeFoliage.pine()
+		return _meshes[kind]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for layer: Array in def.get("layers", [[def.size, 0.0, 0.0]]):

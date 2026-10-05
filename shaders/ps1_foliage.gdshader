@@ -10,12 +10,18 @@ global uniform float ps1_vertex_snap;
 uniform sampler2D foliage_texture : source_color, filter_nearest_mipmap, repeat_enable;
 uniform float alpha_cut = 0.5;
 uniform float wind_strength = 0.12;
+// Volúmenes (copas, pinos): el viento mueve según la altura y se conserva la
+// normal real de la forma para que tenga luz y sombra.
+uniform bool volume = false;
 uniform vec2 snap_resolution = vec2(160.0, 120.0);
 
 void vertex() {
 	// UV.y = 0 arriba, 1 abajo: el viento solo empuja la punta
 	// (en la copa horizontal, según la altura del vértice).
 	float sway = abs(NORMAL.y) > 0.9 && VERTEX.y > 0.3 ? 0.7 : (1.0 - UV.y);
+	if (volume) {
+		sway = clamp((VERTEX.y - 1.5) / 3.0, 0.0, 1.0);
+	}
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float t = floor(TIME * 12.0) / 12.0;
 	float phase = t * 1.7 + wp.x * 0.35 + wp.z * 0.27;
@@ -29,7 +35,9 @@ void vertex() {
 	}
 	POSITION = clip;
 	// Las caras de las tarjetas iluminan como si miraran arriba (sin rayas oscuras).
-	NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+	if (!volume) {
+		NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+	}
 }
 
 void fragment() {

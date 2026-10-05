@@ -685,7 +685,7 @@ func _plant(spots: Array[Vector2]) -> void:
 	trunk_mi.multimesh = trunk_mm
 	trunk_mi.material_override = PS1Assets.vertex_colored("wood", Vector2(1, 1), false)
 	w.add_child(trunk_mi)
-	Foliage.plant(w, "pino", crowns)
+	Foliage.plant(w, "pino_vol", crowns)
 
 
 func _multimesh(mesh: Mesh, count: int) -> MultiMesh:

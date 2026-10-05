@@ -52,7 +52,7 @@ static func plant(world: Node3D, spots: Array[Vector3], seed_value := 77) -> voi
 	mmi.material_override = PS1Assets.vertex_colored("wood", Vector2(1.5, 1.5), false)
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	world.add_child(mmi)
-	Foliage.plant(world, "copa", crowns)
+	Foliage.plant(world, "copa_vol", crowns)
 
 
 ## Tronco algo inclinado con tres ramas que se abren hacia la copa.
